@@ -18,10 +18,13 @@ Install this repository, download the Qwen base model under its own license, the
 
 ```bash
 pip install -e '.[web]'
+git lfs pull
+python -c "from transformers import AutoProcessor; AutoProcessor.from_pretrained('Qwen/Qwen3.5-0.8B').save_pretrained('models/pilot-multihead-v0.1/processor')"
 python scripts/predict.py \
   --checkpoint models/pilot-multihead-v0.1 \
   --image path/to/image.jpg \
   --text "content caption" \
+  --policy-id strict-v1 \
   --policy-file policies/strict.txt
 ```
 

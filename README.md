@@ -1,132 +1,133 @@
-# Jev-PolicyLite · 面向内容审核的轻量多模态决策模型
+# Jev-PolicyLite
 
-<p align="center"><strong>图文与规则联合审核 · 共享表征多头决策 · 人工反馈驱动的快速后训练</strong><br>Adapting Jev-inspired decisions to content moderation with multi-head prediction and lightweight policy-head DPO.</p>
+**面向内容审核的轻量多模态决策模型**
+
+[中文](README.md) | [English](README.en.md)
+
+[模型](models/pilot-multihead-v0.1) · [训练指南](docs/TRAINING_GUIDE.md) · [实验记录](docs/EXPERIMENTS.md) · [项目页面源码](site/) · [MIT](LICENSE)
+
+Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输入，直接预测违规分数、视觉属性和处置动作。项目借鉴 Jev / NanoJev 从隐藏表征直接评分的思路，将其用于色情与敏感内容审核，并实现了多头训练、人工反馈处理和策略头偏好后训练。
+
+我们关心两个问题：小模型能否结合图文与规则完成审核，以及一次人工纠偏需要多少训练成本。为此，三个审核头复用同一份图文表征；偏好后训练阶段冻结主干，缓存特征，仅更新决定拦截、复审或放行的策略头。
 
 <p align="center">
-  <img src="site/assets/architecture.png" alt="Jev-PolicyLite：图像、文本与规则经共享表征后分支到违规、属性与策略头；DPO 只更新策略头。" width="100%">
+  <img src="site/assets/architecture.png" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
 </p>
 
-<p align="center">
-  <a href="site/">Project page</a> ·
-  <a href="docs/TRAINING_GUIDE.md">Training guide</a> ·
-  <a href="docs/HUMAN_FEEDBACK_AND_RL.md">Preference &amp; DPO</a> ·
-  <a href="docs/EXPERIMENTS.md">Experiments</a>
-</p>
+## 项目内容
 
-> **面向内容审核，从违规识别到处置决策，再到人工纠偏后的策略更新。**<br>
-> Image + text + policy → shared representation → violation score, visual attributes and policy action.
+- **多头审核模型**：保留 Qwen3.5 的图文编码能力，通过 LoRA 适配审核任务，分别训练违规、属性和处置策略。
+- **策略头后训练**：将人工纠偏整理成动作偏好对，在冻结特征上执行离散 DPO，减少重复编码。
+- **训练与评测工具**：提供数据校验、按原图分组划分、阈值校准、多头评测和四图拼接压力测试。
+- **模型与本地服务**：提供试验版 LoRA 适配器、三个审核头，以及带资源监控的 FastAPI 网页服务。
 
-**Jev-PolicyLite** 将 Jev / NanoJev 的直接评分与决策接口思想用于**内容审核任务**。我们基于 `Qwen/Qwen3.5-0.8B`，实现了图文与规则联合输入、共享表征多头预测、审核反馈偏好构建和策略头离散 DPO，并配套训练、评测与本地服务工具。当前实验围绕色情与敏感内容审核展开，项目名中的 **Jev** 表达思想来源，**PolicyLite** 表达轻量审核策略建模与更新；仓库名为 `jev-policylite`。
+当前版本已完成训练与部署流程验证。下文分别列出已测结果和仍需验证的能力。
 
-项目保留现成小型视觉语言模型的图文能力，通过领域 LoRA 与小型决策头适配任务；对固定审核标签，一次提取共享表征，同时输出违规分数、视觉属性和处置动作。人工反馈可进一步用于离散 DPO，只更新策略头。当前定位是**小型、可按规则判断的多模态审核研究工程**；规则泛化、细粒度识别和真实反馈收益需要独立评测验证。
+## 方法
 
-## 我们为审核任务做了什么？
+### 图文与规则联合审核
 
-我们的工作集中在**把直接决策模型落实为可训练、可纠偏、可评测的审核流程**。下面列出已实现的任务适配和工程工作，以及对应的验证进展。
+模型取最后一个有效 token 的隐藏表征，接三个 `LayerNorm + Linear` 头：
 
-| 本项目的工作 | 解决的审核问题 | 实现与验证进展 |
+| 审核头 | 输出 | 用途 |
 | --- | --- | --- |
-| **图文与规则联合输入** | 为模型提供图片、正文和政策语境，让同一内容可以在不同审核规则下接受判断。 | 已实现输入与领域 LoRA 训练路径；未见规则泛化仍需专项评测。 |
-| **共享表征上的三个审核头** | 分别回答“是否违规”“有哪些视觉属性”“如何处置”，允许裸露与医学等属性同时存在。 | 已实现违规头、属性头与 `block / review / allow` 策略头；属性可靠性和复审能力取决于对应监督数据。 |
-| **审核纠偏转为动作偏好** | 将人工认可的处置与被纠正的处置组织为同一审核条件下的 chosen / rejected 对。 | 已提供反馈转偏好工具、数据校验和按原图组隔离的训练/验证划分。 |
-| **只更新策略头的离散 DPO** | 在冻结表征足够表达证据时，降低反复调整审核处置策略的训练开销。 | 已跑通 RTX 3090 上的 128 对 bootstrap 实验；编码 46.23 秒后，两轮头部训练及验证共 0.19 秒。真实人工偏好收益尚待验证。 |
-| **四图拼接压力测试** | 检查目标缩小和多图干扰下，模型能否识别整张拼图是否包含违规内容。 | 已提供构建与评测工具；首轮 200 张拼图准确率 89.5%，单违规格场景 84.0%，不代表逐格定位能力。 |
-| **本地审核服务与端侧探索** | 支持本地调用、网页测试和资源观测，并探索普通设备离线运行。 | 已实现 FastAPI 服务与网页；已有 Linux CPU 单头 Q4 原型，多头端侧适配与手机实测仍待完成。 |
+| 违规头 | sigmoid 分数 | 判断内容在输入规则下是否违规 |
+| 属性头 | 多个 sigmoid 分数 | 预测 `nudity`、`sexual_act`、`suggestive`、`medical` 等可共存属性 |
+| 策略头 | 三分类 softmax | 预测 `block`、`review`、`allow` |
 
-```text
-图片 + 正文 + 审核规则
-          ↓
-Qwen3.5-0.8B + 领域 LoRA → 共享图文表征
-          ├─ 违规头：风险分数
-          ├─ 属性头：可同时成立的视觉属性
-          └─ 策略头：拦截 / 复审 / 放行
-                              ↓
-                        人工审核与纠偏
-                              ↓
-                  动作偏好对 → 策略头 DPO → 重新评测
-```
+监督训练先预热任务头，再训练语言 LoRA 与任务头，视觉编码器保持冻结。属性与处置分开建模，例如“存在裸露”和“医学语境”可以同时成立，最终处置由策略头学习。
 
-训练方法见 [训练指南](docs/TRAINING_GUIDE.md)，反馈与后训练流程见 [偏好优化指南](docs/HUMAN_FEEDBACK_AND_RL.md)，实验协议见 [评测工具](docs/EXPERIMENTS.md)。这里的快速更新指冻结特征后的策略头优化，完整耗时还包括模型加载与图文编码。
+Jev / NanoJev 提供了直接评分与决策接口的设计参考。本项目针对固定审核标签采用共享表征多头结构，并增加策略头 DPO；没有实现动态候选集合注意力，也不构成 Jev 的完整复现。
 
-## 从 Jev / NanoJev 借鉴了什么？
+### 策略头偏好后训练
 
-本项目借鉴的是**将隐藏表征用于直接评分，以结构化决策接口组织输出**的思路。按本项目的技术设计说明，NanoJev 的评分路径为这种设计提供了参考；Jev-PolicyLite 将其应用到固定审核任务，并选择共享表征加多个任务头的实现。
+人工复核记录保留同一图片、正文和规则下的两个动作：认可的动作 `chosen` 与被纠正的动作 `rejected`。
 
-| 思想与设计 | Jev-PolicyLite 的实现与边界 |
-| --- | --- |
-| 直接输出判断 | 从主干最后一个有效 token 的隐藏表征读取特征，经小型 `LayerNorm + Linear` 头计算分数；审核路径无需生成解释文本。 |
-| 按任务定义输出 | 违规判断使用 sigmoid；可同时成立的视觉属性分别使用 sigmoid；`block / review / allow` 互斥动作使用 softmax。 |
-| 共享公共输入计算 | 图片、正文与规则共同编码一次，固定任务头复用同一表征；当前不实现动态候选集合注意力或候选重排接口。 |
-| 用反馈调整策略 | 本项目增加冻结特征上的策略头离散 DPO，重用编码结果以减少后续优化计算；不将这一训练器归为 Jev 的原始算法。 |
-
-**借鉴关系：Jev-PolicyLite 是独立实现，不是 Jev 全部内部结构或 NanoJev 的完整复现，也不表示官方关联。** 接入决策头本身不会增加视觉识别能力；效果仍依赖局部视觉信息、训练标签、规则覆盖与决策目标。直接评分也不是 Jev 独有的能力，速度与效果优势应通过相同输入和数据条件下的对照实验验证。
-
-## One representation, three moderation heads
-
-Jev-PolicyLite adapts `Qwen/Qwen3.5-0.8B` to policy-conditioned image-and-text moderation. It separates three questions:
-
-| Head | Question | Current output |
-| --- | --- | --- |
-| Violation head | Is this content a violation under the supplied policy? | Binary probability |
-| Attribute head | Which visual attributes are present? | `nudity`, `sexual_act`, `suggestive`, `medical` |
-| Policy head | What should the system do? | `block`, `review`, `allow` |
-
-The model pools one shared multimodal representation and attaches small `LayerNorm + Linear` heads. The architecture lets a human feedback loop target the policy head without retraining the visual backbone for every policy adjustment.
+训练时冻结主干、LoRA、违规头和属性头，一次性提取图文特征。当前策略头与冻结参考头读取同一份特征，通过离散 DPO 更新动作概率。参考策略只需复制一个小策略头。
 
 <p align="center">
-  <img src="site/assets/post-training.png" alt="后训练流程：人工偏好对、一次冻结特征抽取、冻结参考策略头、可训练策略头和离散 DPO 损失。" width="100%">
+  <img src="site/assets/post-training.png" alt="后训练流程：构建动作偏好、缓存冻结特征、通过离散 DPO 更新策略头。" width="100%">
 </p>
 
-## Why post-train a moderation policy head?
+这里的计算节省来自特征复用。它适用于已有表征能够区分样本、但处置需要调整的情况；冻结特征丢失的视觉细节，无法靠更新策略头补回。当前实现是离散动作上的偏好优化，不包含在线 rollout、PPO 或 GRPO。
 
-An action can disagree with the active policy even when the visual evidence is represented correctly. Policy-head post-training targets that decision layer; it cannot recover visual details missing from frozen features. The project turns a human correction into an auditable preference pair:
+## 实验结果
 
-```text
-(image, text, policy, chosen action, rejected action)
-```
+### RTX 3090 上的 DPO 流程验证
 
-The discrete DPO trainer freezes the Qwen backbone, LoRA, binary head and attribute head. It encodes each preference record once, caches its pooled feature, and updates only the small three-way policy head against a frozen reference head. This is a preference-optimization implementation for the existing classifier architecture, not online PPO, GRPO or a reward-model rollout pipeline.
+使用二元标签自动构造 128 对 block/allow 偏好，按原图分组划分为 103 对训练、25 对验证，训练 2 轮。
 
-## Measured smoke result
-
-The first end-to-end DPO smoke run used **128 binary-bootstrap preference pairs** on one RTX 3090. These pairs verify the training path; they do **not** demonstrate a gain from real human preference data or teach the `review` class.
-
-| Metric | Validation before | Validation after |
+| 验证指标 | 训练前 | 训练后 |
 | --- | ---: | ---: |
 | DPO loss | 0.6931 | 0.4371 |
-| Preference ranking accuracy | 100.0% | 100.0% |
-| Mean chosen/rejected log-probability margin | 6.7104 | 7.9800 |
-| KL to frozen reference policy | 0.00000 | 0.00119 |
+| 偏好排序准确率 | 100.0% | 100.0% |
+| chosen/rejected 平均对数概率差 | 6.7104 | 7.9800 |
+| 相对参考策略的 KL | 0 | 0.00119 |
 
-Feature extraction for 128 records took **46.23 s**. Two policy-head training epochs, including per-epoch validation, took **0.19 s** with a **2.00 GiB** peak CUDA allocation. The head time excludes model loading and feature extraction. Full details: [DPO smoke result](docs/DPO_SMOKE_RESULT_V1.md).
+128 条图文特征抽取耗时 **46.23 秒**；两轮策略头训练及每轮验证耗时 **0.19 秒**；CUDA 峰值分配量 **2.00 GiB**。计时不包含模型加载与保存，0.19 秒也不包含特征抽取。
 
-## Quick start
+这批偏好复述已有二元标签，验证集训练前已经全部排序正确。结果证明流程可运行，尚不能说明真实人工反馈带来的收益，也没有验证复审动作。完整设置见 [DPO 实验记录](docs/DPO_SMOKE_RESULT_V1.md)。
 
-Requirements: Python 3.10+, PyTorch with a compatible CUDA build for GPU training, and Transformers 5.x.
+### 四图拼接与端侧试验
+
+| 试验 | 已测结果 | 说明 |
+| --- | --- | --- |
+| 2×2 拼图，200 张 | 准确率 89.5%，召回率 90.7%，误报率 14.0% | 按“任一格违规则整图违规”评测，不评估逐格定位 |
+| 仅一格违规的拼图 | 准确率 84.0% | 用于检查小目标与多图干扰 |
+| Linux x86_64，单头 Q4，CPU 4 线程 | 模型目录约 479 MB，峰值 RSS 约 859 MiB | 8 条抽样决策一致，未完成全量回归 |
+
+详细记录：[四图实验](docs/MOSAIC_2X2_RESULT_V1.md)、[端侧进展](docs/EDGE_STATUS.md)。手机端、多头量化和 Windows 端尚未完成实测。
+
+## 快速开始
+
+需要 Python 3.10+、Git LFS、Transformers 5.x。GPU 训练需要匹配 CUDA 的 PyTorch；以下命令使用 Bash。
 
 ```bash
-git clone <YOUR_REPOSITORY_URL> jev-policylite
+git lfs install
+git clone https://github.com/fffffiii/jev-policylite.git
 cd jev-policylite
+git lfs pull
 
 python -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
 pip install -e '.[dev,web]'
 ```
 
-Prepare a UTF-8 JSONL manifest, then validate group isolation before training:
+### 加载试验版模型
+
+[公开模型目录](models/pilot-multihead-v0.1) 包含约 43 MB 的 LoRA 权重、三个审核头、校准文件和元数据。Qwen 基座需另行下载，公开包也未包含 processor；首次使用前，将基座 processor 保存到检查点目录：
 
 ```bash
-python scripts/validate_data.py \
-  --manifest data/manifest.jsonl \
-  --image-root .
+python -c "from transformers import AutoProcessor; AutoProcessor.from_pretrained('Qwen/Qwen3.5-0.8B').save_pretrained('models/pilot-multihead-v0.1/processor')"
 ```
 
-See [data/README.md](data/README.md) for the manifest schema and [Training guide](docs/TRAINING_GUIDE.md) for supervised adaptation, calibration and evaluation.
+首次加载基座需要联网或已有本地缓存。准备齐基座、适配器和 processor 后才具备离线加载条件。
 
-## Preference optimization
+```bash
+python scripts/predict.py \
+  --checkpoint models/pilot-multihead-v0.1 \
+  --image path/to/image.jpg \
+  --text "image caption" \
+  --policy-id strict-v1 \
+  --policy-file policies/strict.txt
+```
 
-Start from a checkpoint with an already trained `policy_head.pt`, and use real review feedback whenever possible:
+此命令输出二元违规结果。三头输出与服务接口见 [训练指南](docs/TRAINING_GUIDE.md) 和 [模型说明](models/pilot-multihead-v0.1/README.md)。
+
+### 监督训练
+
+按 [数据格式](data/README.md) 准备自己的 JSONL 清单，在 `configs/train.yaml` 中设置数据路径与训练参数：
+
+```bash
+python scripts/validate_data.py --manifest data/manifest.jsonl --image-root .
+python scripts/train.py --config configs/train.yaml
+```
+
+多头配置参考 `configs/public-pilot-multihead.yaml`。属性头和策略头需要对应标签；仅将二元标签映射成 block/allow 不会教会模型复审。完整步骤见 [训练指南](docs/TRAINING_GUIDE.md)。
+
+### 用人工反馈更新策略
+
+完成上述模型准备后，将复核记录写入 `data/review_feedback.jsonl`：
 
 ```bash
 python scripts/build_preference_pairs.py \
@@ -134,100 +135,47 @@ python scripts/build_preference_pairs.py \
   --output outputs/preferences/review_pairs.jsonl \
   --strict
 
-CUDA_VISIBLE_DEVICES=0 python scripts/train_policy_dpo.py \
-  --checkpoint outputs/your-multihead-checkpoint \
+python scripts/train_policy_dpo.py \
+  --checkpoint models/pilot-multihead-v0.1 \
   --preferences outputs/preferences/review_pairs.jsonl \
-  --output-dir outputs/your-policy-dpo \
-  --epochs 3 \
-  --batch-size 4 \
-  --head-batch-size 64 \
-  --learning-rate 5e-4 \
-  --beta 0.5
+  --output-dir outputs/policy-dpo \
+  --epochs 3 --beta 0.5
 ```
 
-The output is a standalone checkpoint containing the source adapter, processor, unchanged binary and attribute heads, an updated `policy_head.pt`, and `dpo_metrics.json`. The trainer rejects output-directory overwrites and performs a group-isolated train/validation split.
+训练器按原图组隔离训练与验证数据，拒绝覆盖已有输出目录。输出包含适配器、processor、各任务头和 `dpo_metrics.json`，加载时仍需要基座模型。偏好格式与参数见 [后训练指南](docs/HUMAN_FEEDBACK_AND_RL.md)。
 
-The helper below only tests the data and training path. It maps old binary labels to `block` and `allow`; it does not create new supervision.
-
-```bash
-python scripts/build_bootstrap_preferences.py \
-  --manifest data/public-pilot/manifest.jsonl \
-  --split train \
-  --max-records 128 \
-  --output outputs/preferences/bootstrap.jsonl
-```
-
-Read the full [human feedback and discrete DPO guide](docs/HUMAN_FEEDBACK_AND_RL.md) before using either command.
-
-## Evaluation and stress tests
-
-The repository includes a 2×2 mosaic stress test that composes four original images and derives the label by an explicit OR rule. The first 200-mosaic result reached 89.5% accuracy, 95.1% precision, 90.7% recall and 14.0% FPR. The one-violation scenario was the hardest at 84.0% accuracy; a mosaic test is not evidence of per-tile detection.
+### 本地服务
 
 ```bash
-python scripts/build_mosaic_manifest.py \
-  --manifest data/manifest.jsonl \
-  --image-root . \
-  --split test \
-  --output-dir outputs/mosaic-2x2 \
-  --output-manifest outputs/mosaic-2x2/manifest.jsonl
-
-python scripts/evaluate.py \
-  --checkpoint outputs/your-multihead-checkpoint \
-  --manifest outputs/mosaic-2x2/manifest.jsonl \
-  --image-root outputs/mosaic-2x2 \
-  --split test \
-  --output-dir outputs/mosaic-2x2/evaluation
-```
-
-Read [experiment tools](docs/EXPERIMENTS.md) and the [first mosaic result](docs/MOSAIC_2X2_RESULT_V1.md) for the exact protocol and limitations.
-
-## Local service and edge research
-
-The FastAPI service provides a local webpage, moderation endpoint, status telemetry and OpenAPI docs from one model process:
-
-```bash
-MODEL_CHECKPOINT=outputs/your-checkpoint \
-CALIBRATION_FILE=outputs/your-checkpoint/calibration.json \
+MODEL_CHECKPOINT=models/pilot-multihead-v0.1 \
+CALIBRATION_FILE=models/pilot-multihead-v0.1/calibration.json \
 python -m uvicorn qwen35_moderation.web.app:app \
   --host 0.0.0.0 --port 8089 --workers 1
 ```
 
-For offline research, the project has a Linux x86_64 CPU Q4 prototype for the current binary head. Its current measured model directory is about 479 MB and peak RSS is about 859 MiB with four CPU threads. The policy and attribute heads require separate edge-runtime support; mobile, Windows, Android and iOS measurements are pending. See [edge status](docs/EDGE_STATUS.md).
+浏览器访问 `http://localhost:8089`，可提交图片与正文、查看审核结果和运行状态。
 
-## Published pilot adapter
+## 已知限制
 
-The first public pilot checkpoint is included in [`models/pilot-multihead-v0.1`](models/pilot-multihead-v0.1). It contains the LoRA adapter, binary / attribute / policy heads, calibration file and metadata; Git LFS stores the adapter weights. It does **not** contain the 1.7 GB merged base model, training images, manifests, predictions or reviewer feedback.
+- 试训属性标签来自内容等级映射，缺少充分的医学语境和真实复审标注；目前结果不能证明这些细分类别可靠。
+- 输入支持审核规则，但还需要去除规则、替换规则和未见规则测试，确认模型是否真正使用政策语义。
+- 小样本实验不能建立低误报保证。正式评估应在独立测试集上报告固定误报率下的召回，并按内容类型分组。
+- 当前尚未完成与纯视觉分类器、同基座 Yes/No 评分的同条件对照，不能据此宣称决策头提升了精度或端到端速度。
 
-Load it only with the stated `Qwen/Qwen3.5-0.8B` base model and this repository's code. The adapter was trained with source-level proxy labels for a public-pilot development check. Its validation metrics and DPO smoke result are not production safety, policy-generalization or fine-grained attribute claims; see the [model card](models/pilot-multihead-v0.1/README.md) before use.
+## 文档与贡献
 
-## Scope and limitations
+| 内容 | 入口 |
+| --- | --- |
+| 数据格式与标注 | [data/README.md](data/README.md) |
+| 监督训练、校准与评测 | [训练指南](docs/TRAINING_GUIDE.md) |
+| 人工反馈与离散 DPO | [后训练指南](docs/HUMAN_FEEDBACK_AND_RL.md) |
+| 多头与四图压力测试 | [实验工具](docs/EXPERIMENTS.md) |
+| 静态项目页部署 | [GitHub Pages](docs/GITHUB_PAGES.md) |
 
-- Jev-inspired heads do not establish better visual recognition or faster end-to-end inference by themselves. Compare against a vision encoder with a classifier and the same VLM with single-step Yes/No scoring under matched conditions.
-- Policy conditioning requires policy-dependent labels. Evaluate removed, replaced and unseen policy text to check whether the model uses the rules; those ablations are evaluation goals, not results established by the current smoke run.
-- Sigmoid and softmax outputs require calibration checks before being interpreted as confidence. Report recall at a stated FPR on an independent test set, alongside results by content type.
-- Personalized recommendation, dynamic candidate ranking and video temporal modeling are outside the current implementation. Content understanding alone does not establish user-preference prediction.
-- The public-pilot data and binary-bootstrap DPO run are development checks, not production safety claims.
-- `review` requires dedicated human decision labels and preference comparisons. It is not validated by mapping binary labels to block/allow.
-- The public-pilot attribute labels are source-level proxies. They do not validate medical capability or fine-grained attribute reliability.
-- Small validation sets cannot establish a real-world low false-positive rate. Use held-out, group-isolated evaluation and report errors by policy and content type.
-- Do not commit real moderation images, annotations, reviewer identity, credentials, model weights or private run logs. See [CONTRIBUTING.md](CONTRIBUTING.md).
+欢迎提交代码、复现结果和错误分析。提交前运行 `python -m pytest -q`；审核相关改动请说明使用的政策、标签与数据划分。详细要求见 [贡献说明](CONTRIBUTING.md)。真实审核图片、人工反馈和私有日志不随仓库发布。
 
-## Project layout
+## 许可与致谢
 
-```text
-configs/                    reproducible training settings
-data/                       schema examples only; local data is ignored
-scripts/                    data, training, DPO, calibration and evaluation tools
-src/qwen35_moderation/      model, heads, service and browser UI
-site/                       static GitHub Pages project page
-docs/                       experimental protocols and public documentation
-tests/                      unit tests for data, heads, feedback and DPO loss
-```
+项目代码采用 [MIT](LICENSE) 协议。基座模型、数据和第三方依赖遵循各自许可。
 
-## Contributing and release
-
-Run `python -m pytest -q` before a pull request. Release review must confirm that sensitive data, weights, internal addresses and private logs are ignored. See [CONTRIBUTING.md](CONTRIBUTING.md), [release checklist](RELEASE_CHECKLIST.md), and [GitHub Pages deployment](docs/GITHUB_PAGES.md).
-
-## License
-
-The project source code is released under the [MIT License](LICENSE). The included pilot adapter depends on `Qwen/Qwen3.5-0.8B`; base-model weights, datasets and third-party dependencies remain subject to their own licenses and terms.
+感谢 Qwen 提供图文基座，以及 Jev / NanoJev 的直接决策设计思路。Jev-PolicyLite 为独立项目。
