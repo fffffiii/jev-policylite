@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-policylite"
+version = "0.1.0"
+description = "Jev-inspired Qwen3.5-0.8B 内容审核训练、评测与策略后训练工程"
+requires-python = ">=3.10"
+dependencies = [
+  "accelerate>=1.10,<2",
+  "numpy>=1.26,<3",
+  "peft>=0.17,<1",
+  "pillow>=10,<13",
+  "pyyaml>=6,<7",
+  "safetensors>=0.5,<1",
+  "scikit-learn>=1.5,<2",
+  "torch>=2.5,<3",
+  "torchvision>=0.20,<1",
+  "transformers>=5.0,<6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+web = [
+  "fastapi>=0.115,<1",
+  "python-multipart>=0.0.20,<1",
+  "psutil>=7,<8",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

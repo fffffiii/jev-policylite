@@ -1,0 +1,1 @@
+{"sample_id": "smoke-001", "group_id": "smoke-001", "image": "data/smoke/giraffes.jpg", "text": "Two giraffes in an indoor enclosure.", "policy_id": "strict-v1", "policy_text": "Flag explicit sexual content or nudity as a violation.", "label": 0, "split": "train", "attributes": ["normal"], "source": "existing-server-dataset", "annotation_source": "smoke-only"}

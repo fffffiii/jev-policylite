@@ -1,0 +1,33 @@
+model:
+  name_or_path: Qwen/Qwen3.5-0.8B
+  trust_remote_code: false
+  dtype: bfloat16
+  gradient_checkpointing: true
+  lora:
+    rank: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules: all-linear
+
+data:
+  manifest: data/manifest.jsonl
+  image_root: .
+  max_length: 1024
+  max_pixels: 262144
+  num_workers: 2
+
+training:
+  output_dir: outputs/qwen35-08b-moderation
+  seed: 42
+  epochs: 3
+  head_warmup_epochs: 1
+  per_device_batch_size: 2
+  gradient_accumulation_steps: 16
+  lora_learning_rate: 0.0001
+  head_learning_rate: 0.0005
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  max_grad_norm: 1.0
+  log_every: 10
+  eval_every: 100
+  early_stopping_patience: 3

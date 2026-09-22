@@ -1,0 +1,2 @@
+source_id,image,text,strict_label,contextual_label,strict_decision,contextual_decision,attributes,source,annotation_source,notes
+image-001,data/images/example.jpg,示例正文,0,0,allow,allow,normal,replace-me,human,替换为真实标注

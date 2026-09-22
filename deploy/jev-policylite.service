@@ -1,0 +1,34 @@
+[Unit]
+Description=Jev-PolicyLite LAN Moderation Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_LINUX_USER
+WorkingDirectory=/opt/jev-policylite
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+Environment=CUDA_VISIBLE_DEVICES=0
+Environment=HF_HOME=/opt/jev-policylite/.cache/huggingface
+Environment=XDG_CACHE_HOME=/opt/jev-policylite/.cache
+Environment=TRITON_CACHE_DIR=/opt/jev-policylite/.cache/triton
+Environment=MODEL_CHECKPOINT=/var/lib/jev-policylite/checkpoints/your-checkpoint
+Environment=CALIBRATION_FILE=/var/lib/jev-policylite/checkpoints/your-checkpoint/calibration.json
+Environment=TEST_METRICS_FILE=/var/lib/jev-policylite/checkpoints/your-checkpoint/test_metrics.json
+Environment=MAX_UPLOAD_MB=10
+Environment=REQUESTS_PER_MINUTE=30
+ExecStart=/opt/jev-policylite/.venv/bin/python -m uvicorn qwen35_moderation.web.app:app --host 0.0.0.0 --port 8089 --workers 1 --no-proxy-headers
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/jev-policylite /var/lib/jev-policylite
+
+[Install]
+WantedBy=multi-user.target

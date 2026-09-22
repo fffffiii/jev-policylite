@@ -1,0 +1,1 @@
+{"sample_id":"demo-001","group_id":"image-001","image":"data/images/example.jpg","text":"示例正文","policy_id":"strict-v1","policy_text":"严格规则 v1：出现色情行为、明确裸露、性器官、乳头、臀部特写或明显性暗示时，判定为违规。艺术、医学和教育语境不构成豁免。其余内容判定为不违规。","label":0,"split":"train","attributes":["normal"],"source":"replace-me","annotation_source":"human"}

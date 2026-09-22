@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Qwen3.5-0.8B 局域网图文审核性能实验台">
+  <title>Qwen Safety Lab</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark">Q</span><span>Qwen Safety Lab</span></a>
+    <div class="service-state"><span id="statusDot" class="status-dot"></span><span id="serviceText">连接中</span><span class="separator"></span><span id="uptime">--</span></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">LOCAL MULTIMODAL MODERATION · 0.8B</p>
+        <h1>让规则参与判断，<br><span>看见模型如何取舍。</span></h1>
+        <p class="intro">上传一张图片，选择审核边界。结果、延迟和 GPU 状态会在同一块实验台中更新。</p>
+      </div>
+      <div class="hero-metrics">
+        <div><span>测试集 PR-AUC</span><strong id="heroPrauc">--</strong></div>
+        <div><span>当前 P50 延迟</span><strong id="heroLatency">--</strong></div>
+        <div><span>模型状态</span><strong id="heroReady">加载中</strong></div>
+      </div>
+    </section>
+
+    <section class="workspace-grid">
+      <article class="panel tester-panel">
+        <div class="panel-head"><div><p class="section-index">01 / 审核测试</p><h2>输入内容</h2></div><span class="privacy">图片不留存</span></div>
+        <form id="moderationForm">
+          <label id="dropzone" class="dropzone" for="imageInput">
+            <input id="imageInput" name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+            <img id="preview" alt="待审核图片预览">
+            <div id="uploadPrompt" class="upload-prompt"><span class="upload-icon">↗</span><strong>拖入图片或点击选择</strong><small>JPEG / PNG / WebP · 最大 10 MB</small></div>
+            <button id="clearImage" class="clear-image" type="button" aria-label="移除图片">×</button>
+          </label>
+
+          <div class="field-grid">
+            <label class="field"><span>审核规则</span><select id="policySelect" name="policy_id"><option value="pilot-suggestive-v1">强性暗示管控 · L2+</option><option value="pilot-explicit-v1">裸露与色情管控 · L3+</option><option value="custom">自定义规则 · 实验性</option></select></label>
+            <label class="field"><span>决策模式</span><select id="thresholdMode" name="threshold_mode"><option value="balanced">均衡模式 · 阈值 0.5</option><option value="low_fpr">低误报模式 · 校准阈值</option></select></label>
+          </div>
+          <label id="customPolicyField" class="field hidden"><span>自定义规则</span><textarea id="policyText" name="policy_text" rows="3" maxlength="4000" placeholder="描述哪些内容违规、哪些情形允许……"></textarea><small>当前模型没有针对任意规则泛化做专项验证</small></label>
+          <label class="field"><span>内容正文 <em>可选</em></span><textarea id="contentText" name="text" rows="3" maxlength="10000" placeholder="标题、文案或上下文；原始试训数据没有真实配文"></textarea></label>
+          <button id="submitButton" class="primary-button" type="submit"><span>运行审核</span><span class="button-arrow">→</span></button>
+        </form>
+      </article>
+
+      <aside class="panel result-panel">
+        <div class="panel-head"><div><p class="section-index">02 / 判断结果</p><h2>模型输出</h2></div><span id="supportBadge" class="support-badge">等待输入</span></div>
+        <div id="resultEmpty" class="result-empty"><div class="radar"><i></i><i></i><i></i></div><p>提交内容后，这里会显示审核分数和耗时。</p></div>
+        <div id="resultContent" class="result-content hidden">
+          <div class="decision-row"><div id="decisionMark" class="decision-mark">✓</div><div><span>审核结论</span><strong id="decisionText">通过</strong></div></div>
+          <div class="score-block"><div class="score-title"><span>违规概率</span><strong id="scoreText">0.0%</strong></div><div class="score-track"><div id="scoreBar"></div><i id="thresholdMark"></i></div><div class="score-labels"><span>0</span><span id="thresholdLabel">阈值 0.50</span><span>1</span></div></div>
+          <div id="headGrid" class="head-grid"></div>
+          <dl class="result-details"><div><dt>总耗时</dt><dd id="totalTime">--</dd></div><div><dt>模型计算</dt><dd id="inferenceTime">--</dd></div><div><dt>预处理</dt><dd id="preprocessTime">--</dd></div><div><dt>输入长度</dt><dd id="tokenCount">--</dd></div></dl>
+          <p id="resultNote" class="result-note"></p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="telemetry-section">
+      <div class="section-title"><div><p class="section-index">03 / 实时遥测</p><h2>机器与服务</h2></div><span>每 2 秒刷新</span></div>
+      <div class="telemetry-grid">
+        <article class="metric-card accent-card"><span>GPU 0 显存</span><strong id="gpuMemory">--</strong><div class="mini-track"><i id="gpuMemoryBar"></i></div><small id="gpuMemoryDetail">--</small></article>
+        <article class="metric-card"><span>GPU 利用率</span><strong id="gpuUtil">--</strong><small id="gpuThermal">--</small></article>
+        <article class="metric-card"><span>进程内存</span><strong id="processMemory">--</strong><small id="cudaMemory">--</small></article>
+        <article class="metric-card"><span>请求 / 分钟</span><strong id="requestRate">--</strong><small id="requestTotal">--</small></article>
+      </div>
+      <div class="chart-grid">
+        <article class="panel chart-panel"><div class="chart-head"><div><span>响应延迟</span><strong id="latencySummary">P50 -- · P95 --</strong></div><span class="legend-dot">最近采样</span></div><canvas id="latencyChart" height="150"></canvas></article>
+        <article class="panel gpu-panel"><div class="chart-head"><div><span>双 GPU 状态</span><strong>实时硬件指标</strong></div></div><div id="gpuList" class="gpu-list"></div></article>
+      </div>
+    </section>
+
+    <section class="evidence-section">
+      <div class="section-title"><div><p class="section-index">04 / 离线证据</p><h2>独立测试集</h2></div><span>1,200 条双规则记录</span></div>
+      <div class="evidence-grid">
+        <article class="evidence-card"><span>PR-AUC</span><strong id="metricPrauc">--</strong><p>排序能力，越接近 1 越好</p></article>
+        <article class="evidence-card"><span>准确率</span><strong id="metricAccuracy">--</strong><p>默认 0.5 阈值</p></article>
+        <article class="evidence-card"><span>召回率</span><strong id="metricRecall">--</strong><p>违规样本检出比例</p></article>
+        <article class="evidence-card"><span>规则切换双正确</span><strong id="metricFlip">--</strong><p>同图两套规则均判断正确</p></article>
+      </div>
+      <div class="panel limitations"><strong>读数边界</strong><div id="limitationsList"></div></div>
+    </section>
+
+    <section class="recent-section">
+      <div class="section-title"><div><p class="section-index">05 / 请求记录</p><h2>最近审核</h2></div><span>不记录图片和正文</span></div>
+      <div class="panel table-wrap"><table><thead><tr><th>时间</th><th>规则</th><th>结论</th><th>分数</th><th>总耗时</th><th>推理</th></tr></thead><tbody id="recentRows"><tr><td colspan="6" class="empty-row">还没有审核请求</td></tr></tbody></table></div>
+    </section>
+  </main>
+  <footer><span>Qwen3.5-0.8B · LoRA moderation head</span><a href="/api/docs" target="_blank" rel="noreferrer">API 文档 ↗</a></footer>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

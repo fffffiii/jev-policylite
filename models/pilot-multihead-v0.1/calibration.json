@@ -1,0 +1,10 @@
+{
+  "temperature": 1.0,
+  "global_threshold": 0.5,
+  "policy_thresholds": {
+    "pilot-suggestive-v1": 0.5,
+    "pilot-explicit-v1": 0.5
+  },
+  "source": "uncalibrated-multihead",
+  "note": "多头检查点尚未在校准集上重拟合温度和低误报阈值。均衡与低误报目前都使用 0.5。"
+}
