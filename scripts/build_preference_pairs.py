@@ -10,7 +10,7 @@ from qwen35_moderation.feedback import build_preference_pair
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="把人工审核反馈转换为 DPO/GRPO 偏好对")
+    parser = argparse.ArgumentParser(description="把人工复核记录转换为离散 DPO 动作偏好对")
     parser.add_argument("--feedback", required=True, help="人工复核 JSONL")
     parser.add_argument("--output", required=True, help="偏好对 JSONL")
     parser.add_argument("--strict", action="store_true", help="遇到无效记录时立即失败")
@@ -49,7 +49,7 @@ def main() -> None:
         "written": written,
         "skipped_same_action": skipped_same_action,
         "invalid": invalid,
-        "note": "输出是多模态偏好数据；训练时必须在 prompt 前拼接对应 image，不要把图片路径当作文本特征。",
+        "note": "本仓库训练器读取 image、text 和 policy_text 构造输入；chosen/rejected 是动作标签。请保留同图及近重复图的 group_id。",
     }
     output.with_suffix(".summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"

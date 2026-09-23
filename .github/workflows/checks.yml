@@ -1,0 +1,48 @@
+name: Source and documentation checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only test dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.10.0'
+          python -m pip install 'pytest>=8,<10' 'numpy>=1.26,<3' 'scikit-learn>=1.5,<2' 'pillow>=10,<13' 'psutil>=7,<8' 'setuptools>=69' wheel
+      - name: Unit tests and offline documentation checks
+        run: |
+          python -m pytest -q
+          python -m compileall -q src scripts tests
+          node --check site/assets/main.js
+          node --check src/qwen35_moderation/web/static/app.js
+          bash -n scripts/start_public_pilot_multihead.sh
+      - name: Check diagram sources and raster fallbacks
+        run: python scripts/render_diagrams.py --check
+      - name: Verify wheel includes the web interface
+        run: |
+          python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          wheel = next(Path('dist').glob('*.whl'))
+          with ZipFile(wheel) as archive:
+              names = {name.rsplit('/', 1)[-1] for name in archive.namelist() if '/web/static/' in name}
+          assert {'index.html', 'app.js', 'styles.css'} <= names, names
+          print('Wheel contains the web interface.')
+          PY

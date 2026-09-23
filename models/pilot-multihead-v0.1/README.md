@@ -1,6 +1,6 @@
 # Pilot Multi-Head Adapter v0.1
 
-This package is the public development adapter for Jev-PolicyLite. It adapts `Qwen/Qwen3.5-0.8B` with LoRA and provides separate binary-violation, visual-attribute, and policy-action heads.
+This package is the development adapter provided with Jev-PolicyLite. It adapts `Qwen/Qwen3.5-0.8B` with LoRA and provides separate binary-violation, visual-attribute, and policy-action heads.
 
 ## Files
 
@@ -28,8 +28,10 @@ python scripts/predict.py \
   --policy-file policies/strict.txt
 ```
 
-## Training and evaluation boundary
+`decision_head.pt` is the historical filename for the **binary violation** head; it is not the three-way `policy_head.pt`. The CLI above returns only the binary result. The local web service displays additional heads separately and does not use them to replace the main binary verdict.
 
-This is a public-pilot development checkpoint. It was trained with source-level proxy labels and evaluated on a small development split. The `review` action and medical attribute do not have sufficient dedicated labels. Do not use it as a production safety system or interpret the recorded metrics as a guarantee of low false-positive rates, policy generalization, fine-grained recognition, or human-preference improvement.
+## Training and evaluation scope
+
+This is a pilot development checkpoint, not a production moderation model. It was trained with source-level proxy labels and evaluated on a small development split. The `review` action and medical attribute do not have sufficient dedicated labels. Do not use it as a production safety system or interpret the recorded metrics as a guarantee of low false-positive rates, policy generalization, fine-grained recognition, or human-preference improvement.
 
 The project source code is MIT licensed. This adapter remains dependent on `Qwen/Qwen3.5-0.8B` and its associated terms; base-model and dataset licenses are not replaced by the project license.

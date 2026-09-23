@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 import time
 import uuid
@@ -19,6 +18,7 @@ from PIL import Image
 
 from .config import Settings
 from .errors import AppError, BusyError, InputError
+from .evidence import load_test_metrics
 from .image_io import decode_image
 from .inference import POLICIES, ModerationEngine
 from .monitoring import RequestRecord, ServiceMetrics, log_event
@@ -58,7 +58,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Qwen3.5 审核实验台",
+    title="Jev-PolicyLite 本地审核实验台",
     version="1.0.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
@@ -179,17 +179,22 @@ async def status() -> dict[str, Any]:
 
 @app.get("/api/v1/model")
 async def model_info() -> dict[str, Any]:
-    test_metrics = json.loads(settings.test_metrics_file.read_text(encoding="utf-8"))
+    test_metrics, metrics_note = load_test_metrics(settings.test_metrics_file)
     return {
         "base_model": engine.metadata["base_model"] if engine else "loading",
         "checkpoint": settings.checkpoint.name,
         "policies": POLICIES,
         "test_metrics": test_metrics,
+        "test_metrics_available": bool(test_metrics),
+        "test_metrics_note": metrics_note,
+        "max_upload_bytes": settings.max_upload_bytes,
         "calibration": engine.calibration if engine else {},
         "limitations": [
-            "试训数据只覆盖 L1-L4 性感、裸露与色情分级。",
+            "仓库试验模型使用 L1–L4 内容等级标签，不是逐项人工属性标注。",
             "自定义规则、医疗、艺术、日常安全图片和图文冲突尚未专项验证。",
-            "校准集目标误报率为 1%，独立测试集实际误报率为 2.89%。",
+            "预设规则是服务内置模板；加载其他检查点时，不代表这些规则参与过训练。",
+            "校准集目标误报率不保证测试集或线上误报率；请检查导入评测文件中的实际结果。",
+            "主结论由二元分数与阈值计算，策略头建议单独显示；复审和医学属性仍缺少充分验证。",
         ],
     }
 
@@ -215,7 +220,7 @@ async def create_moderation(
     if not raw:
         raise InputError("图片不能为空。", "empty-image")
     if len(raw) > settings.max_upload_bytes:
-        raise AppError("文件过大", 413, "图片不能超过 10 MB。", "upload-too-large")
+        raise AppError("文件过大", 413, f"图片不能超过 {settings.max_upload_bytes / 2**20:g} MiB。", "upload-too-large")
     if engine is None:
         raise AppError("模型未就绪", 503, "模型仍在加载。", "model-not-ready")
     picture = await asyncio.to_thread(decode_image, raw)

@@ -6,12 +6,12 @@
 
 [Model](models/pilot-multihead-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page source](site/) · [MIT](LICENSE)
 
-Jev-PolicyLite adapts Qwen3.5-0.8B to content moderation. Given an image, accompanying text, and a moderation policy, it predicts a violation score, visual attributes, and a handling action. Inspired by Jev / NanoJev's use of hidden representations for direct scoring, the project implements multi-head training, review-feedback processing, and policy-head preference optimization for sexual and sensitive-content moderation.
+Jev-PolicyLite adapts Qwen3.5-0.8B to content moderation. Given an image, accompanying text, and a moderation policy, it predicts a violation score, visual attributes, and a handling action. Inspired by Jev / NanoJev's use of hidden representations for direct scoring, the project implements multi-head training, review-feedback processing, and policy-head preference optimization for moderation experiments. The pilot uses sexual-content severity labels, not a general sensitive-content benchmark.
 
-We study two questions: whether a small model can moderate content using both multimodal evidence and policy text, and how much training a human correction requires. Three moderation heads share one representation. During preference optimization, the backbone is frozen, features are cached, and only the head responsible for blocking, review, or allowing is updated.
+We study two questions: whether a small model can moderate content using both multimodal evidence and policy text, and the training cost of adjusting its actions. Benefits from real human feedback still need separate evaluation. Three moderation heads share one representation. During preference optimization, the backbone is frozen, features are cached, and only the head responsible for blocking, review, or allowing is updated.
 
 <p align="center">
-  <img src="site/assets/architecture.png" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
+  <img src="site/assets/architecture.svg" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
 </p>
 
 ## What is included
@@ -21,7 +21,7 @@ We study two questions: whether a small model can moderate content using both mu
 - **Training and evaluation tools:** data validation, image-group splits, threshold calibration, head-level evaluation, and 2×2 mosaic stress tests.
 - **Model and local service:** a pilot LoRA adapter, three moderation heads, and a FastAPI web interface with resource monitoring.
 
-The current release validates the training and deployment workflow. Measured results and remaining evaluation gaps are reported below.
+The repository records training, DPO, and local-deployment trials. The results below come from those experiment notes; they are not a production evaluation.
 
 ## Method
 
@@ -41,12 +41,12 @@ Jev / NanoJev inspired the direct-scoring and decision-interface design. This im
 
 ### Policy-head preference optimization
 
-A review record pairs an accepted action, `chosen`, with a corrected action, `rejected`, under the same image, text, and policy.
+A review record pairs the reviewer's preferred action, `chosen`, with the model's original action being corrected, `rejected`, under the same image, text, and policy.
 
 The backbone, LoRA, violation head, and attribute head are frozen. Multimodal features are extracted once. The trainable policy head and frozen reference head read the same features, and discrete DPO updates the action probabilities. The reference requires only a copy of the small policy head.
 
 <p align="center">
-  <img src="site/assets/post-training.png" alt="Post-training: construct action preferences, cache frozen features, and update the policy head with discrete DPO." width="100%">
+  <img src="site/assets/post-training.svg" alt="Post-training: construct action preferences, cache frozen features, and update the policy head with discrete DPO." width="100%">
 </p>
 
 Feature reuse reduces repeated encoding. This is useful when existing features distinguish the relevant evidence but the action needs adjustment. Updating the head cannot recover visual details absent from those features. The implementation optimizes discrete action preferences; it does not include online rollouts, PPO, or GRPO.
@@ -64,7 +64,7 @@ Binary labels were used to construct 128 block/allow preference pairs, split by 
 | Mean chosen/rejected log-probability margin | 6.7104 | 7.9800 |
 | KL to the reference policy | 0 | 0.00119 |
 
-Feature extraction for 128 records took **46.23 s**. Two policy-head epochs, including per-epoch validation, took **0.19 s**. Peak CUDA allocation was **2.00 GiB**. Timings exclude model loading and saving; the 0.19 s figure also excludes feature extraction.
+Feature extraction for 128 records took **46.23 s**. Two policy-head epochs and evaluation took **0.19 s**. Peak CUDA allocation was **2.00 GiB**. Timings exclude model loading and saving; the 0.19 s figure also excludes feature extraction. The script includes the final training/validation evaluation in this interval.
 
 These preferences repeat existing binary labels, and all validation pairs were ranked correctly before training. The run establishes that the workflow operates, not a benefit from real human feedback or a validated review action. See the [DPO experiment record](docs/DPO_SMOKE_RESULT_V1.md).
 
@@ -95,7 +95,7 @@ pip install -e '.[dev,web]'
 
 ### Load the pilot model
 
-The [model directory](models/pilot-multihead-v0.1) contains approximately 43 MB of LoRA weights, three moderation heads, calibration, and metadata. Download the Qwen base model separately. The public package also omits the processor; save the base processor into the checkpoint directory before first use:
+The [model directory](models/pilot-multihead-v0.1) contains approximately 43 MB of LoRA weights, three moderation heads, calibration, and metadata. Download the Qwen base model separately. The adapter package also omits the processor; save the base processor into the checkpoint directory before first use:
 
 ```bash
 python -c "from transformers import AutoProcessor; AutoProcessor.from_pretrained('Qwen/Qwen3.5-0.8B').save_pretrained('models/pilot-multihead-v0.1/processor')"
@@ -112,7 +112,7 @@ python scripts/predict.py \
   --policy-file policies/strict.txt
 ```
 
-This command returns the binary violation result. See the [training guide](docs/TRAINING_GUIDE.md) and [model card](models/pilot-multihead-v0.1/README.md) for multi-head outputs and service usage.
+This command returns the binary violation result, not the attribute or policy-head outputs. See the [training guide](docs/TRAINING_GUIDE.md) and [model card](models/pilot-multihead-v0.1/README.md) for multi-head outputs and service usage.
 
 ### Supervised training
 
@@ -142,7 +142,7 @@ python scripts/train_policy_dpo.py \
   --epochs 3 --beta 0.5
 ```
 
-The trainer splits training and validation data by image group and refuses to overwrite an existing output directory. It saves the adapter, processor, task heads, and `dpo_metrics.json`; loading still requires the base model. See the [post-training guide](docs/HUMAN_FEEDBACK_AND_RL.md) for the preference schema and parameters.
+Provide a `group_id` shared by every version of an image and its near duplicates. Without it, the converter groups by image path only; it cannot identify near duplicates. The trainer splits training and validation data by group and refuses to overwrite an existing output directory. It saves the adapter, processor, task heads, and `dpo_metrics.json`; loading still requires the base model. See the [post-training guide](docs/HUMAN_FEEDBACK_AND_RL.md) for the preference schema and parameters.
 
 ### Local service
 
@@ -150,10 +150,12 @@ The trainer splits training and validation data by image group and refuses to ov
 MODEL_CHECKPOINT=models/pilot-multihead-v0.1 \
 CALIBRATION_FILE=models/pilot-multihead-v0.1/calibration.json \
 python -m uvicorn qwen35_moderation.web.app:app \
-  --host 0.0.0.0 --port 8089 --workers 1
+  --host 127.0.0.1 --port 8089 --workers 1
 ```
 
-Open `http://localhost:8089` to submit images and text and inspect moderation results and runtime status.
+Open `http://localhost:8089` to submit images and text and inspect results and runtime status. The main verdict comes from the binary violation head; separate cards show attribute scores and policy-head suggestions.
+
+Offline metrics are optional. Set `TEST_METRICS_FILE` to the matching `test_metrics.json`; otherwise the page shows that no metrics were supplied. Images are written to a temporary directory during preprocessing and deleted afterward; the service does not keep an image or text history. There is no login or authentication layer. The example binds to localhost; configure access controls before exposing it to a network.
 
 ## Limitations
 

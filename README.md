@@ -1,17 +1,17 @@
 # Jev-PolicyLite
 
-**面向内容审核的轻量多模态决策模型**
+**结合图片、正文和审核规则，预测违规分数与处置动作**
 
 [中文](README.md) | [English](README.en.md)
 
 [模型](models/pilot-multihead-v0.1) · [训练指南](docs/TRAINING_GUIDE.md) · [实验记录](docs/EXPERIMENTS.md) · [项目页面源码](site/) · [MIT](LICENSE)
 
-Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输入，直接预测违规分数、视觉属性和处置动作。项目借鉴 Jev / NanoJev 从隐藏表征直接评分的思路，将其用于色情与敏感内容审核，并实现了多头训练、人工反馈处理和策略头偏好后训练。
+Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输入，直接预测违规分数、视觉属性和处置动作。项目参考 Jev / NanoJev 直接从隐藏表征评分的做法，提供多头训练、人工复核记录转换和策略头偏好优化工具。目前的试验主要使用性暗示、裸露与色情分级数据，不代表对所有敏感内容都有效。
 
-我们关心两个问题：小模型能否结合图文与规则完成审核，以及一次人工纠偏需要多少训练成本。为此，三个审核头复用同一份图文表征；偏好后训练阶段冻结主干，缓存特征，仅更新决定拦截、复审或放行的策略头。
+项目测试小模型能否结合图文与规则判断内容，也测量调整处置动作所需的训练开销。三个审核头共享图文表征；偏好优化时冻结主干并缓存特征，只更新预测拦截、复审或放行的策略头。真实人工反馈是否带来收益，仍需单独验证。
 
 <p align="center">
-  <img src="site/assets/architecture.png" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
+  <img src="site/assets/architecture.svg" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
 </p>
 
 ## 项目内容
@@ -21,7 +21,7 @@ Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输�
 - **训练与评测工具**：提供数据校验、按原图分组划分、阈值校准、多头评测和四图拼接压力测试。
 - **模型与本地服务**：提供试验版 LoRA 适配器、三个审核头，以及带资源监控的 FastAPI 网页服务。
 
-当前版本已完成训练与部署流程验证。下文分别列出已测结果和仍需验证的能力。
+仓库记录了监督训练、DPO 和本地部署的流程试验。以下结果来自已有实验记录，不是完整的生产环境评估。
 
 ## 方法
 
@@ -46,7 +46,7 @@ Jev / NanoJev 提供了直接评分与决策接口的设计参考。本项目针
 训练时冻结主干、LoRA、违规头和属性头，一次性提取图文特征。当前策略头与冻结参考头读取同一份特征，通过离散 DPO 更新动作概率。参考策略只需复制一个小策略头。
 
 <p align="center">
-  <img src="site/assets/post-training.png" alt="后训练流程：构建动作偏好、缓存冻结特征、通过离散 DPO 更新策略头。" width="100%">
+  <img src="site/assets/post-training.svg" alt="后训练流程：构建动作偏好、缓存冻结特征、通过离散 DPO 更新策略头。" width="100%">
 </p>
 
 这里的计算节省来自特征复用。它适用于已有表征能够区分样本、但处置需要调整的情况；冻结特征丢失的视觉细节，无法靠更新策略头补回。当前实现是离散动作上的偏好优化，不包含在线 rollout、PPO 或 GRPO。
@@ -64,7 +64,7 @@ Jev / NanoJev 提供了直接评分与决策接口的设计参考。本项目针
 | chosen/rejected 平均对数概率差 | 6.7104 | 7.9800 |
 | 相对参考策略的 KL | 0 | 0.00119 |
 
-128 条图文特征抽取耗时 **46.23 秒**；两轮策略头训练及每轮验证耗时 **0.19 秒**；CUDA 峰值分配量 **2.00 GiB**。计时不包含模型加载与保存，0.19 秒也不包含特征抽取。
+128 条图文特征抽取耗时 **46.23 秒**；两轮策略头训练及验证耗时 **0.19 秒**；CUDA 峰值分配量 **2.00 GiB**。计时不包含模型加载与保存，0.19 秒也不包含特征抽取；训练脚本的这段计时还包含训练结束后的最终评估。
 
 这批偏好复述已有二元标签，验证集训练前已经全部排序正确。结果证明流程可运行，尚不能说明真实人工反馈带来的收益，也没有验证复审动作。完整设置见 [DPO 实验记录](docs/DPO_SMOKE_RESULT_V1.md)。
 
@@ -95,7 +95,7 @@ pip install -e '.[dev,web]'
 
 ### 加载试验版模型
 
-[公开模型目录](models/pilot-multihead-v0.1) 包含约 43 MB 的 LoRA 权重、三个审核头、校准文件和元数据。Qwen 基座需另行下载，公开包也未包含 processor；首次使用前，将基座 processor 保存到检查点目录：
+[试验模型目录](models/pilot-multihead-v0.1) 包含约 43 MB 的 LoRA 权重、三个审核头、校准文件和元数据。Qwen 基座需另行下载，模型包也未包含 processor；首次使用前，将基座 processor 保存到检查点目录：
 
 ```bash
 python -c "from transformers import AutoProcessor; AutoProcessor.from_pretrained('Qwen/Qwen3.5-0.8B').save_pretrained('models/pilot-multihead-v0.1/processor')"
@@ -112,7 +112,7 @@ python scripts/predict.py \
   --policy-file policies/strict.txt
 ```
 
-此命令输出二元违规结果。三头输出与服务接口见 [训练指南](docs/TRAINING_GUIDE.md) 和 [模型说明](models/pilot-multihead-v0.1/README.md)。
+此命令输出二元违规结果。该脚本目前不返回属性和策略头结果；三头输出与服务接口见 [训练指南](docs/TRAINING_GUIDE.md) 和 [模型说明](models/pilot-multihead-v0.1/README.md)。
 
 ### 监督训练
 
@@ -142,7 +142,7 @@ python scripts/train_policy_dpo.py \
   --epochs 3 --beta 0.5
 ```
 
-训练器按原图组隔离训练与验证数据，拒绝覆盖已有输出目录。输出包含适配器、processor、各任务头和 `dpo_metrics.json`，加载时仍需要基座模型。偏好格式与参数见 [后训练指南](docs/HUMAN_FEEDBACK_AND_RL.md)。
+复核记录应提供原图组 `group_id`；同图和近重复图必须使用同组。缺少该字段时，转换器仅按图片路径分组，不能识别近重复图。训练器按组隔离训练与验证数据，拒绝覆盖已有输出目录。输出包含适配器、processor、各任务头和 `dpo_metrics.json`，加载时仍需要基座模型。偏好格式与参数见 [后训练指南](docs/HUMAN_FEEDBACK_AND_RL.md)。
 
 ### 本地服务
 
@@ -150,10 +150,12 @@ python scripts/train_policy_dpo.py \
 MODEL_CHECKPOINT=models/pilot-multihead-v0.1 \
 CALIBRATION_FILE=models/pilot-multihead-v0.1/calibration.json \
 python -m uvicorn qwen35_moderation.web.app:app \
-  --host 0.0.0.0 --port 8089 --workers 1
+  --host 127.0.0.1 --port 8089 --workers 1
 ```
 
-浏览器访问 `http://localhost:8089`，可提交图片与正文、查看审核结果和运行状态。
+浏览器访问 `http://localhost:8089`，可提交图片与正文、查看审核结果和运行状态。上方主结论来自二元违规头；属性和策略头在独立卡片显示，策略建议不等于二元阈值判断。
+
+离线评测文件是可选的：通过 `TEST_METRICS_FILE` 指定与检查点对应的 `test_metrics.json`；未提供时页面显示“未提供”，不会填入其他试验的分数。上传图片会在预处理期间写入临时目录并在预处理后删除，服务不建立图片或正文历史库。服务没有登录鉴权，默认仅监听本机；局域网部署前请配置访问控制。
 
 ## 已知限制
 

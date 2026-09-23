@@ -1,6 +1,6 @@
 # Training guide
 
-This guide describes the intended local workflow. All paths are examples; keep model caches, real data and experiment outputs outside a public Git repository.
+This guide covers data preparation, supervised training, calibration, and evaluation. All paths are examples; keep model caches, real data and experiment outputs outside a public Git repository.
 
 ## 1. Prepare data
 
@@ -16,7 +16,7 @@ python scripts/validate_data.py \
   --image-root .
 ```
 
-Run a smoke test before a full experiment. The default Qwen image budget is deliberately small enough for a 24 GB GPU; adjust batch size, gradient accumulation and `max_pixels` together.
+Run a smoke test before a full experiment. Memory use depends on image size, sequence length, batch size, and the installed runtime. Check the smoke-test result on your own GPU before increasing the workload; the example configuration is not a memory-fit guarantee.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 python scripts/smoke_test.py --config configs/train.yaml
@@ -73,4 +73,10 @@ python scripts/build_mosaic_manifest.py --help
 python scripts/evaluate.py --help
 ```
 
-Use the [release checklist](../RELEASE_CHECKLIST.md) to confirm that no weights, original data, personal information, endpoints or browser profiles are staged.
+Use the [release checklist](../RELEASE_CHECKLIST.md) to check staged files. The reviewed pilot adapter under `models/pilot-multihead-v0.1/` is intentional; other weights, source data, feedback, credentials, and browser profiles should not be committed.
+
+## 6. Run the local web interface
+
+Follow the model/processor preparation and service command in the [README](../README.en.md#local-service). The service requires a checkpoint, processor, and binary calibration file. Offline test metrics are optional: set `TEST_METRICS_FILE` to the report for the same checkpoint, data split, and threshold. Missing or invalid reports are identified on the page instead of being replaced with pilot numbers.
+
+The UI shows the binary threshold verdict separately from policy-head action suggestions. It does not explain the model’s reasoning. Service-processing time excludes upload and image decoding; it is not browser-to-server round-trip latency. Uploaded images are temporarily written during preprocessing, then removed; configure access controls and review temporary storage before using sensitive data.

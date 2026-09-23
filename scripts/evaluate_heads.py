@@ -1,4 +1,4 @@
-"""分别评估属性头与策略决策头，避免把二元违规指标误当作多头指标。"""
+"""分别评估属性头与策略头，避免把二元违规指标误当作多头指标。"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from qwen35_moderation.heads import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="评估属性头与 Block/Review/Allow 决策头")
+    parser = argparse.ArgumentParser(description="分别评估属性头与 block/review/allow 策略头")
     parser.add_argument("--predictions", required=True, help="evaluate.py 生成的 predictions JSONL")
     parser.add_argument("--output", required=True)
     parser.add_argument(

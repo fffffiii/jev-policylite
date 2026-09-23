@@ -14,7 +14,7 @@ from qwen35_moderation.utils import load_yaml
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="单批次前向、反向和显存 smoke test")
+    parser = argparse.ArgumentParser(description="用一个批次检查前向、反向和显存占用")
     parser.add_argument("--config", default="configs/train.yaml")
     return parser.parse_args()
 

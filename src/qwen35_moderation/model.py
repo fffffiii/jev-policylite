@@ -14,7 +14,7 @@ from .heads import ATTRIBUTE_IDS, DECISION_IDS, make_task_head
 
 @dataclass
 class HeadBundle:
-    """一次前向同时给出的审核 logit。未加载的头保持 None。"""
+    """一次前向计算得到的各任务 logit；未启用的审核头返回 None。"""
 
     violation_logit: torch.Tensor
     attribute_logits: torch.Tensor | None = None
@@ -22,10 +22,10 @@ class HeadBundle:
 
 
 class ModerationModel(nn.Module):
-    """Qwen3.5 多模态骨干，后面挂审核头。
+    """Qwen3.5 多模态主干与三个独立审核头。
 
-    `head` 是已有的二元违规头。`attribute_head` 与 `policy_head` 接在同一份
-    池化隐藏特征上，分别回答画面属性和 Block / Review / Allow。
+    `head` 是已有的二元违规头。`attribute_head` 与 `policy_head` 读取同一个
+    最后有效 token 的隐藏表征，分别预测属性和 block / review / allow。
     """
 
     def __init__(self, backbone: nn.Module):
@@ -101,7 +101,7 @@ class ModerationModel(nn.Module):
             parameter.requires_grad = trainable
 
     def enable_multi_heads(self) -> None:
-        """打开两只新头的训练。没有监督样本的头不会被写成权重文件。"""
+        """启用属性头和策略头训练；未获得监督信号的头不会保存权重。"""
         self.multi_head_enabled = True
         self._set_extra_head_trainable(True)
 
@@ -130,7 +130,7 @@ class ModerationModel(nn.Module):
         return pooled.float()
 
     def encode(self, **inputs: torch.Tensor) -> torch.Tensor:
-        """把图文输入编码为各审核头共享的池化特征。"""
+        """返回最后一个有效 token 的表征，供各审核头共享。"""
         return self._pool(inputs)
 
     def forward(self, return_heads: bool = False, **inputs: torch.Tensor) -> torch.Tensor | HeadBundle:

@@ -1,11 +1,8 @@
-"""同一份隐藏特征上的 Attribute Head 与 Decision Head。
+"""共享图文表征上的审核头及其输出格式。
 
-Backbone 只负责把输入收成 h。两个 head 都很小，各自把 h 变成任务结果：
-
-- Attribute Head：多标签 sigmoid，回答画面里有什么。
-- Decision Head：三类 softmax，回答当前 policy 下 Block / Review / Allow。
-
-已经训好的二元审核头继续单独存放，不把未训练的新头概率写成结果。
+属性头使用多标签 sigmoid；策略头使用三分类 softmax，预测 block / review / allow。
+二元违规头另存为 decision_head.pt。历史文件名和 JSON 中的 decision 键保持不变，
+但它们不应与三分类策略头混为一谈。未加载的属性头不输出概率。
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ ATTRIBUTE_IDS = ("nudity", "sexual_act", "suggestive", "medical")
 ATTRIBUTE_NAMES = {
     "nudity": "裸露",
     "sexual_act": "性行为",
-    "suggestive": "擦边",
+    "suggestive": "性暗示",
     "medical": "医学",
 }
 ATTRIBUTE_ALIASES = {
@@ -32,6 +29,7 @@ ATTRIBUTE_ALIASES = {
     "性行为": "sexual_act",
     "suggestive": "suggestive",
     "擦边": "suggestive",
+    "性暗示": "suggestive",
     "medical": "medical",
     "医学": "medical",
 }
@@ -54,11 +52,11 @@ SOURCE_LEVEL_ATTRIBUTES = {
     "source_L4": ("nudity", "sexual_act"),
 }
 
-BINARY_DECISION_NOTE = "当前权重是二元决策头。Block / Review / Allow 需要已训练的 policy_head.pt。"
+BINARY_DECISION_NOTE = "未加载三分类策略头；这里只按二元分数和阈值给出拦截或放行建议，不提供复审概率。"
 
 
 def make_task_head(hidden_size: int, outputs: int) -> nn.Sequential:
-    """与现有审核头相同的 LayerNorm + Linear，方便端侧用同一套读法。"""
+    """创建 LayerNorm + Linear 任务头。"""
     return nn.Sequential(nn.LayerNorm(hidden_size), nn.Linear(hidden_size, outputs))
 
 
@@ -155,24 +153,24 @@ def format_heads(
     attribute_probabilities: np.ndarray | None = None,
     decision_probabilities: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    """把两只 head 收成稳定的 JSON 结构。没有权重时不填概率。"""
+    """将属性头与处置输出整理为 JSON；缺少权重时不填入该头的概率。"""
     attribute_ready = attribute_probabilities is not None
     attribute = {
         "id": "attribute",
-        "title": "Attribute Head",
-        "question": "画面里有什么",
+        "title": "属性头（Attribute head）",
+        "question": "各项属性的模型分数，不是人工标注",
         "ready": attribute_ready,
         "kind": "multilabel_sigmoid",
         "labels": _label_rows(ATTRIBUTE_IDS, ATTRIBUTE_NAMES, attribute_probabilities),
     }
     if not attribute_ready:
-        attribute["note"] = "检查点里还没有 attribute_head.pt，属性概率要等这只头训练后再输出。"
+        attribute["note"] = "检查点未包含 attribute_head.pt，暂不显示属性分数。"
     if decision_probabilities is not None:
         action = DECISION_IDS[int(np.argmax(decision_probabilities))]
         decision = {
             "id": "decision",
-            "title": "Decision Head",
-            "question": "按照当前 policy 应该怎么处理",
+            "title": "处置建议（Policy head）",
+            "question": "策略头的建议动作，与二元阈值判断分别显示",
             "ready": True,
             "kind": "softmax",
             "action": action,
@@ -182,8 +180,8 @@ def format_heads(
         action = "block" if violation_probability >= threshold else "allow"
         decision = {
             "id": "decision",
-            "title": "Decision Head",
-            "question": "按照当前 policy 应该怎么处理",
+            "title": "二元阈值建议（未加载策略头）",
+            "question": "按二元违规分数与阈值推导",
             "ready": True,
             "kind": "binary",
             "action": action,
@@ -194,7 +192,7 @@ def format_heads(
 
 
 def sequential_head_arrays(state: dict[str, torch.Tensor]) -> tuple[np.ndarray, int, int]:
-    """把 LayerNorm + Linear 打成端侧使用的小端 float32 数组。"""
+    """将 LayerNorm + Linear 参数按端侧格式排列为小端 float32 数组。"""
     norm_weight = state["0.weight"].detach().float().cpu().numpy()
     norm_bias = state["0.bias"].detach().float().cpu().numpy()
     weight = state["1.weight"].detach().float().cpu().numpy()
@@ -207,7 +205,7 @@ def sequential_head_arrays(state: dict[str, torch.Tensor]) -> tuple[np.ndarray, 
 
 
 def apply_sequential_head(hidden: np.ndarray, flat: np.ndarray, outputs: int) -> np.ndarray:
-    """与端侧 C++ 相同的 LayerNorm + Linear。hidden 是最后一层向量。"""
+    """用 NumPy 计算 LayerNorm + Linear，供端侧实现对照。hidden 是单个隐藏向量。"""
     values = np.asarray(hidden, dtype=np.float64)
     hidden_size = int(values.shape[-1])
     expected = hidden_size * (2 + outputs) + outputs

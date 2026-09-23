@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/evaluate.py \
 
 工具会生成 `layouts.jsonl`，记录每张拼图的四个源 group、位置、标签和场景，便于定位漏检。`summary.json` 固化随机种子、图块尺寸和派生规则。
 
-这是小目标、遮挡和多目标干扰压力测试，不等于“模型可以逐格审核”。若业务需要逐图结论，应先拆图再批量调用模型，或单独训练检测/区域模型。
+这是目标缩小和多图干扰压力测试；脚本没有额外模拟遮挡，不等于“模型可以逐格审核”。若业务需要逐图结论，应先拆图再批量调用模型，或单独训练检测/区域模型。
 
 公开试训的首轮结果见 [MOSAIC_2X2_RESULT_V1.md](MOSAIC_2X2_RESULT_V1.md)。
 
@@ -41,7 +41,7 @@ python scripts/evaluate_heads.py \
   --output outputs/evaluation/head_metrics.json
 ```
 
-默认只承认人工属性标签。公开试训数据中的 `source_L1` 到 `source_L4` 是代理等级；若仅作开发诊断，显式加 `--allow-source-level-proxy`。决策头评估需要预测文件中的人工 `decision_label`，没有真实 `review` 标注时，不能声称三分类已经验证。
+默认只承认人工属性标签。公开试训数据中的 `source_L1` 到 `source_L4` 是代理等级；若仅作开发诊断，显式加 `--allow-source-level-proxy`。策略头评估需要预测文件中的人工 `decision_label`，没有真实 `review` 标注时，不能声称三分类已经验证。
 
 对于四图拼接，还可以基于 `layouts.jsonl` 将每个 tile 的属性按 OR 规则聚合，单独观察小目标下的属性头：
 

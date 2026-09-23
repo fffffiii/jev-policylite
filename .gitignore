@@ -27,6 +27,12 @@ site-post-training-dialog.png
 
 # 仅公开审查过的 LoRA 适配器包；其余训练产物继续忽略。
 !models/
-!models/**
-!models/**/*.safetensors
-!models/**/*.pt
+!models/pilot-multihead-v0.1/adapter/adapter_model.safetensors
+!models/pilot-multihead-v0.1/decision_head.pt
+!models/pilot-multihead-v0.1/attribute_head.pt
+!models/pilot-multihead-v0.1/policy_head.pt
+models/pilot-multihead-v0.1/processor/
+
+# Local package builds
+build/
+dist/

@@ -51,8 +51,8 @@ class Settings:
             self.checkpoint / "metadata.json",
             self.checkpoint / "decision_head.pt",
             self.checkpoint / "adapter",
+            self.checkpoint / "processor",
             self.calibration_file,
-            self.test_metrics_file,
             self.static_dir / "index.html",
         ]
         if self.edge_bundle is not None:

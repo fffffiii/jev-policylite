@@ -1,1 +1,1 @@
-{"feedback_id":"review-001","sample_id":"image-001:strict-v1","image":"data/images/example.jpg","text":"示例正文","policy_id":"strict-v1","policy_text":"严格规则 v1：出现明确裸露或性行为时违规。","human_action":"review","model_action":"allow","reward":1.0,"reviewer":"annotator-a"}
+{"feedback_id":"review-001","sample_id":"image-001:strict-v1","image":"data/images/example.jpg","text":"示例正文","policy_id":"strict-v1","policy_text":"严格规则 v1：出现明确裸露或性行为时违规。","human_action":"review","model_action":"allow","reward":1.0,"reviewer":"annotator-a","group_id":"image-001"}

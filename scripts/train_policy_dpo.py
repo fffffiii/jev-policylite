@@ -19,7 +19,7 @@ from torch.nn import functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from qwen35_moderation.feedback import normalize_action
+from qwen35_moderation.feedback import normalize_action, preference_group_id
 from qwen35_moderation.heads import DECISION_IDS
 from qwen35_moderation.model import model_inputs
 from qwen35_moderation.preference import discrete_dpo_loss
@@ -57,6 +57,9 @@ def read_preferences(path: str | Path) -> list[dict[str, Any]]:
                 continue
             try:
                 row = json.loads(raw)
+                if not isinstance(row, dict):
+                    raise ValueError("偏好记录必须是 JSON 对象")
+                group_id = preference_group_id(row)
                 missing = sorted(required - row.keys())
                 if missing:
                     raise ValueError(f"缺少字段：{missing}")
@@ -75,7 +78,7 @@ def read_preferences(path: str | Path) -> list[dict[str, Any]]:
                 rejected=rejected,
                 reward=reward,
                 text=str(row.get("text", "")),
-                group_id=str(row.get("group_id", row.get("feedback_id", row["sample_id"]))),
+                group_id=group_id,
             )
             rows.append(normalized)
     if len(rows) < 2:

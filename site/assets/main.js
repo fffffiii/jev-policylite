@@ -1,10 +1,10 @@
 "use strict";
 
 const stages = [
-  { label: "SUPERVISED ADAPTATION", title: "先建立一个能做任务的起始策略。", description: "冻结视觉编码器，先预热分类头，再联合更新语言 LoRA 与有监督信号的任务头。每张原图的多规则样本放在同一数据划分中。", detail: "更新：LoRA + 任务头　｜　输入：图片、正文、规则与标签" },
-  { label: "HUMAN PREFERENCES", title: "把人工纠偏写成动作偏好对。", description: "在相同图片、正文和政策条件下，人工认可的动作成为 chosen，被纠正的原动作成为 rejected。保留原图组标识，核对训练与验证之间没有同图泄漏；相同动作会跳过。", detail: "产物：偏好 JSONL　｜　动作：block / review / allow" },
+  { label: "SUPERVISED ADAPTATION", title: "先用标注数据训练任务头和 LoRA。", description: "冻结视觉编码器，先预热分类头，再联合更新语言 LoRA 与有监督信号的任务头。每张原图的多规则样本放在同一数据划分中。", detail: "更新：LoRA + 任务头　｜　输入：图片、正文、规则与标签" },
+  { label: "HUMAN PREFERENCES", title: "记录人工动作与需要纠正的模型动作。", description: "在相同图片、正文和政策条件下，人工认可的动作成为 chosen，被纠正的原动作成为 rejected。保留原图组标识，核对训练与验证之间没有同图泄漏；相同动作会跳过。", detail: "输出：偏好 JSONL　｜　动作：block / review / allow" },
   { label: "DISCRETE DPO", title: "重用图文特征，只更新策略头。", description: "冻结主干和 LoRA，先把特征缓存在本次进程中。当前策略头与冻结参考头共享这些特征，通过偏好概率比计算 DPO 损失；只有当前策略头接收梯度。", detail: "更新：policy_head　｜　冻结：主干、LoRA、参考头、其余任务头" },
-  { label: "EVALUATE & DELIVER", title: "先看策略变化，再决定是否交付。", description: "记录偏好准确率、边际、KL 与资源占用，再在独立数据上评估误阻断和复审率。工具保存 adapter、processor 与全部已有任务头；加载时仍需可用的基础模型。", detail: "产物：检查点 + dpo_metrics.json　｜　端侧：单头 Q4 原型，多头仍需适配" }
+  { label: "EVALUATE & DELIVER", title: "在独立测试集上检查策略变化。", description: "记录偏好准确率、边际、KL 与资源占用，再在独立数据上评估误阻断和复审率。工具保存 adapter、processor 与全部已有任务头；加载时仍需可用的基础模型。", detail: "输出：检查点 + dpo_metrics.json　｜　端侧：单头 Q4 原型，多头仍需适配" }
 ];
 const snippets = [
   "# 在项目根目录创建训练环境\npython -m venv .venv\nsource .venv/bin/activate\npip install -e '.[dev,web]'\n\n# 校验自有图文清单\npython scripts/validate_data.py \\\n  --manifest data/manifest.jsonl \\\n  --image-root .",

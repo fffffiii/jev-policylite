@@ -9,7 +9,7 @@ import torch
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="将审核头导出为端侧可直接读取的 FP32 文件")
+    parser = argparse.ArgumentParser(description="将二元违规头导出为端侧格式的 FP32 文件（不含属性头或策略头）")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

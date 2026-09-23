@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Jev-PolicyLite：基于 Qwen3.5-0.8B 的图文与规则联合审核工程。多分类头、轻量后训练与离散 DPO，让审核策略更容易迭代。">
+  <meta name="description" content="Jev-PolicyLite：基于 Qwen3.5-0.8B 的图文审核实验：三个审核头共享表征，使用离散 DPO 更新处置策略。">
   <meta name="theme-color" content="#f7f6f0">
-  <meta property="og:title" content="Jev-PolicyLite — Small model. Faster feedback.">
-  <meta property="og:description" content="Encode once. Reuse features. Optimize a small policy. 多头图文审核与轻量偏好后训练。">
+  <meta property="og:title" content="Jev-PolicyLite — Multimodal moderation with policy-head DPO">
+  <meta property="og:description" content="Image, text and policy inputs; three moderation heads; cached-feature preference optimization.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="assets/architecture.png">
-  <title>Jev-PolicyLite — 让审核策略，更快迭代</title>
+  <title>Jev-PolicyLite — 图文审核与策略头偏好优化</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="assets/style.css">
   <script src="assets/config.js" defer></script>
@@ -26,54 +26,54 @@
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow"><span class="status-dot"></span> MULTIMODAL MODERATION · RESEARCH PREVIEW</p>
-        <h1 id="hero-title">Small model.<br>A faster<br><em>feedback loop.</em></h1>
-        <p class="hero-lead">让审核策略，跟得上真实世界。</p>
-        <p class="hero-description">把图片、正文和规则，交给同一个小模型。<br>通过多头预测与轻量偏好后训练，让每一次人工纠偏都有机会成为下一版策略的起点。</p>
-        <div class="actions"><a class="button primary" href="#post-training">了解快速后训练 <span aria-hidden="true">↗</span></a><a class="text-link" href="#method">探索模型结构 <span aria-hidden="true">↓</span></a></div>
+        <h1 id="hero-title">Image. Text. Policy.<br><em>Three task heads.</em></h1>
+        <p class="hero-lead">用同一份图文表征，预测属性与处置动作。</p>
+        <p class="hero-description">输入图片、正文和审核规则，分别得到违规分数、属性分数和处置建议。<br>人工复核记录可转成动作偏好，用于更新策略头。</p>
+        <div class="actions"><a class="button primary" href="#post-training">查看策略头训练 <span aria-hidden="true">↗</span></a><a class="text-link" href="#method">查看模型结构 <span aria-hidden="true">↓</span></a></div>
         <div class="hero-tags"><span>Qwen3.5-0.8B</span><span>Multi-head</span><span>Discrete DPO</span></div>
       </div>
       <div class="hero-visual">
-        <div class="figure-label"><span>FIG. 01 / SYSTEM OVERVIEW</span><span>从感知到决策</span></div>
-        <button class="image-button" data-zoom="assets/architecture.png" data-caption="系统流程图：共享图文表征与三个审核头" aria-label="放大系统流程图"><img src="assets/architecture.png" width="1536" height="1024" alt="图片、正文与规则经过 Qwen3.5-0.8B，共享池化特征分支到违规、属性和策略三个分类头。DPO 阶段只更新策略头。" fetchpriority="high"></button>
-        <div class="figure-caption"><span>一次共享表征，三个不同的问题。</span><span>点击查看大图 ↗</span></div>
-        <div class="visual-note"><span class="mono">THE IDEA</span><p>保留感知能力，<br>把迭代集中在决策上。</p><span class="note-arrow" aria-hidden="true">↗</span></div>
+        <div class="figure-label"><span>FIG. 01 / SYSTEM OVERVIEW</span><span>输入、共享表征与输出</span></div>
+        <button class="image-button" data-zoom="assets/architecture.svg" data-caption="系统流程图：共享图文表征与三个审核头" aria-label="放大系统流程图"><img src="assets/architecture.svg" width="1536" height="1024" alt="图片、正文与规则经过 Qwen3.5-0.8B，最后一个有效 token 的表征分别进入违规、属性和策略三个审核头。DPO 阶段只更新策略头。" fetchpriority="high"></button>
+        <div class="figure-caption"><span>三个头独立输出，共享同一份表征。</span><span>点击查看大图 ↗</span></div>
+        <div class="visual-note"><span class="mono">THE IDEA</span><p>DPO 冻结主干，<br>只更新策略头。</p><span class="note-arrow" aria-hidden="true">↗</span></div>
       </div>
     </section>
 
     <section class="metrics-strip wrap" aria-label="实验速览">
       <div><span class="metric-number">0.8<span>B</span></span><p>多模态基础模型</p></div>
-      <div><span class="metric-number">0.19<span>s</span></span><p>两轮策略头训练 <sup>1</sup></p></div>
+      <div><span class="metric-number">0.19<span>s</span></span><p>两轮策略头训练与评估 <sup>1</sup></p></div>
       <div><span class="metric-number">2.00<span>GiB</span></span><p>DPO 流程峰值 CUDA 分配量 <sup>1</sup></p></div>
-      <div class="metric-context"><span class="mono">01 / RTX 3090 · SMOKE TEST</span><p>128 条自动偏好；特征抽取另需 46.23 秒。<br>0.19 秒不含模型加载、特征抽取与导出。</p></div>
+      <div class="metric-context"><span class="mono">01 / RTX 3090 · SMOKE TEST</span><p>128 条自动偏好；特征抽取另需 46.23 秒。<br>0.19 秒含评估，不含加载、特征抽取与导出。</p></div>
     </section>
 
     <section class="section wrap why" id="why">
-      <div class="section-intro"><p class="eyebrow">01 — WHY THIS MATTERS</p><h2>内容在变，<br>审核也需要<br><em>持续学习。</em></h2><p>一个分数无法表达所有业务边界。这个项目把“画面里有什么”和“当前规则下怎么处理”分开，让错误更容易诊断，让反馈更容易用于训练。</p></div>
+      <div class="section-intro"><p class="eyebrow">01 — WHY THIS MATTERS</p><h2>为什么分开预测<br><em>属性与动作？</em></h2><p>“是否出现裸露”和“是否需要拦截”不是同一个标签。项目分别输出属性分数和处置建议，便于按任务评估错误。它不生成判断理由，也尚未验证所有细分类别。</p></div>
       <div class="principles">
-        <article><span class="row-number">01</span><div><h3>让规则进入模型输入</h3><p>同一张图片在不同规则下可能有不同结论。图像、正文、政策文本共同输入，支持对规则敏感性的训练和对照评测。</p><span class="micro-label">IMAGE + TEXT + POLICY</span></div></article>
-        <article><span class="row-number">02</span><div><h3>让反馈成为可训练的数据</h3><p>把人工认可的动作与被拒绝的动作配成偏好对。冻结主干、复用特征，只优化小策略头，降低多轮训练的计算开销。</p><span class="micro-label">HUMAN FEEDBACK → PREFERENCE PAIRS</span></div></article>
-        <article><span class="row-number">03</span><div><h3>向普通设备上的离线审核迈进</h3><p>小基座、分类头输出与量化路径，让本地运行具备实验基础。已完成 Linux CPU Q4 原型；手机和 Windows 端仍需适配与实测。</p><span class="micro-label">LOCAL-FIRST · EDGE RESEARCH</span></div></article>
+        <article><span class="row-number">01</span><div><h3>将审核规则作为输入</h3><p>图片、正文和规则一起编码。规则文本可以替换，但模型是否真正使用规则语义，仍需用去除规则、替换规则和未见规则试验来验证。</p><span class="micro-label">IMAGE + TEXT + POLICY</span></div></article>
+        <article><span class="row-number">02</span><div><h3>把人工复核整理成偏好对</h3><p>把人工认可的动作与被拒绝的动作配成偏好对。冻结主干、复用特征，只优化小策略头，降低多轮训练的计算开销。</p><span class="micro-label">HUMAN FEEDBACK → PREFERENCE PAIRS</span></div></article>
+        <article><span class="row-number">03</span><div><h3>先验证 Linux CPU 原型</h3><p>仓库记录了单个二元审核头的 Linux CPU Q4 原型。完整回归、多头量化、手机和 Windows 端运行仍待验证。</p><span class="micro-label">LOCAL-FIRST · EDGE RESEARCH</span></div></article>
       </div>
     </section>
 
     <section class="method-band" id="method">
       <div class="wrap section">
-        <div class="section-heading"><div><p class="eyebrow">02 — ONE BACKBONE, MULTIPLE HEADS</p><h2>共享理解。<em>分开决策。</em></h2></div><p>一个池化特征 <span class="math">h</span>，连接三个轻量头。<br>预测分数、语义属性与策略动作各自有明确职责。</p></div>
+        <div class="section-heading"><div><p class="eyebrow">02 — ONE BACKBONE, MULTIPLE HEADS</p><h2>共享表征，<em>分别预测。</em></h2></div><p>取最后一个有效 token 的表征 <span class="math">h</span>，分别送入三个头。<br>三个输出不串联，策略头不直接读取其他头的分数。</p></div>
         <div class="heads-layout">
-          <div class="backbone-block"><span class="micro-label">SHARED REPRESENTATION</span><h3>Qwen3.5<span>0.8B</span></h3><p>图像编码 + 语言骨干 + LoRA</p><div class="vector" aria-label="池化隐藏特征"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span>h</span></div><small>DPO 阶段冻结</small></div>
+          <div class="backbone-block"><span class="micro-label">SHARED REPRESENTATION</span><h3>Qwen3.5<span>0.8B</span></h3><p>图像编码 + 语言骨干 + LoRA</p><div class="vector" aria-label="最后一个有效 token 的隐藏表征"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span>h</span></div><small>DPO 阶段冻结</small></div>
           <div class="head-rows">
-            <article><span class="head-index">A</span><div><h3>Violation head <small>是否违规？</small></h3><p>二元违规概率 · sigmoid</p></div><span class="head-badge">SCORE</span></article>
+            <article><span class="head-index">A</span><div><h3>Violation head <small>是否违规？</small></h3><p>二元违规分数 · sigmoid</p></div><span class="head-badge">SCORE</span></article>
             <article><span class="head-index">B</span><div><h3>Attribute head <small>画面有什么？</small></h3><p>nudity / sexual_act / suggestive / medical</p></div><span class="head-badge">MULTI-LABEL</span></article>
             <article class="active-head"><span class="head-index">C</span><div><h3>Policy head <small>应该怎么处理？</small></h3><p>Block / Review / Allow · softmax</p></div><span class="head-badge">DPO UPDATE</span></article>
           </div>
         </div>
-        <p class="section-footnote">三个头均采用 LayerNorm + Linear。当前公开试训属性为等级代理标签；Review 与医学属性尚缺充分标注，结构支持不等于能力已经验证。</p>
+        <p class="section-footnote">三个头均采用 LayerNorm + Linear。试训属性由内容等级转换而来，不是逐项人工标注；复审动作和医学属性仍缺少足够的专门数据。</p>
       </div>
     </section>
 
     <section class="section wrap" id="post-training">
-      <div class="section-heading"><div><p class="eyebrow">03 — POST-TRAINING, MADE LIGHTER</p><h2>编码一次，<em>快速迭代。</em></h2></div><p>快速的关键：在一次训练运行内缓存冻结特征，<br>将后续优化集中在小策略头上。</p></div>
-      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training.png" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training.png" width="1536" height="1024" alt="人工偏好数据通过冻结主干编码一次。缓存特征同时输入冻结参考策略头和可训练策略头，DPO 损失只反向更新后者。"></button><figcaption>浅蓝表示冻结，暖色表示更新。参考策略只复制一份小策略头，无需再加载一整套 Qwen。</figcaption></figure>
+      <div class="section-heading"><div><p class="eyebrow">03 — POST-TRAINING, MADE LIGHTER</p><h2>缓存特征，<em>只训练策略头。</em></h2></div><p>每条图文记录先编码一次，在本次进程内缓存特征。<br>后续训练轮次不再重复运行主干。</p></div>
+      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training.svg" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training.svg" width="1536" height="1024" alt="图片、正文和规则由冻结主干编码；缓存特征输入参考头与可训练策略头。chosen/rejected 是用于 DPO 损失的动作标签，梯度只更新策略头。"></button><figcaption>蓝色模块冻结，橙色模块更新；橙色虚线表示梯度，深色虚线表示动作标签。参考头只复制起始策略头，不复制整个主干。</figcaption></figure>
       <div class="training-explorer">
         <div role="tablist" aria-label="后训练阶段" class="stage-tabs">
           <button role="tab" id="stage-tab-0" aria-selected="true" aria-controls="stage-panel" data-stage="0"><span>01</span>监督适配</button>
@@ -81,20 +81,20 @@
           <button role="tab" id="stage-tab-2" aria-selected="false" aria-controls="stage-panel" tabindex="-1" data-stage="2"><span>03</span>离散 DPO</button>
           <button role="tab" id="stage-tab-3" aria-selected="false" aria-controls="stage-panel" tabindex="-1" data-stage="3"><span>04</span>验证与交付</button>
         </div>
-        <div id="stage-panel" role="tabpanel" aria-labelledby="stage-tab-0" tabindex="0"><span class="micro-label" id="stage-label">SUPERVISED ADAPTATION</span><h3 id="stage-title">先建立一个能做任务的起始策略。</h3><p id="stage-description">冻结视觉编码器，先预热分类头，再联合更新语言 LoRA 与有监督信号的任务头。每张原图的多规则样本放在同一数据划分中。</p><div class="stage-detail" id="stage-detail">更新：LoRA + 任务头　｜　输入：图片、正文、规则与标签</div></div>
+        <div id="stage-panel" role="tabpanel" aria-labelledby="stage-tab-0" tabindex="0"><span class="micro-label" id="stage-label">SUPERVISED ADAPTATION</span><h3 id="stage-title">先用标注数据训练任务头和 LoRA。</h3><p id="stage-description">冻结视觉编码器，先预热分类头，再联合更新语言 LoRA 与有监督信号的任务头。每张原图的多规则样本放在同一数据划分中。</p><div class="stage-detail" id="stage-detail">更新：LoRA + 任务头　｜　输入：图片、正文、规则与标签</div></div>
       </div>
-      <div class="equation"><span class="micro-label">THE OBJECTIVE</span><code>L = −log σ[β (m − m<sub>ref</sub>)]</code><p>m = log P(chosen) − log P(rejected)<br>让人工选中的动作，相对于冻结参考策略获得更高的偏好边际。</p></div>
-      <p class="section-footnote">这里的“快速 RL”指基于动作偏好的离散 DPO 后训练。当前实现没有在线 rollout、PPO 或 GRPO，也不在 DPO 阶段更新主干。特征缓存在本次进程内复用。</p>
+      <div class="equation"><span class="micro-label">THE OBJECTIVE</span><code>L = −log σ[β (m − m<sub>ref</sub>)]</code><p>m = log P(chosen) − log P(rejected)<br>提高 chosen 相对 rejected 的对数概率差，<br>并与冻结参考头的同一差值比较。</p></div>
+      <p class="section-footnote">这是离散动作上的 DPO，不包含在线 rollout、PPO 或 GRPO。特征缓存只在本次进程内复用；更新策略头无法补回主干表征中缺失的视觉细节。</p>
     </section>
 
     <section class="results-band" id="results"><div class="section wrap">
-      <div class="section-heading"><div><p class="eyebrow">04 — MEASURED, NOT ASSUMED</p><h2>展示结果，也展示<em>边界。</em></h2></div><a class="text-link" href="../docs/DPO_SMOKE_RESULT_V1.md" data-doc-path="docs/DPO_SMOKE_RESULT_V1.md">下载实验记录 ↗</a></div>
-      <div class="result-grid"><div class="timing-study"><div class="study-heading"><span class="micro-label">RTX 3090 / 128 PAIRS</span><span>后训练耗时拆解</span></div><div class="timing-row"><div><span>冻结特征抽取</span><strong>46.23 <small>s</small></strong></div><div class="timing-track"><span class="feature-time"></span></div></div><div class="timing-row"><div><span>两轮策略头训练</span><strong>0.19 <small>s</small></strong></div><div class="timing-track"><span class="head-time"></span></div></div><p>额外训练轮次复用同一批特征。上述计时不含模型加载与保存；训练计时包含评测开销，是单次小样本观察。</p></div>
+      <div class="section-heading"><div><p class="eyebrow">04 — MEASURED, NOT ASSUMED</p><h2>实验结果与<em>适用范围。</em></h2></div><a class="text-link" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/DPO_SMOKE_RESULT_V1.md" data-doc-path="docs/DPO_SMOKE_RESULT_V1.md">查看实验记录 ↗</a></div>
+      <div class="result-grid"><div class="timing-study"><div class="study-heading"><span class="micro-label">RTX 3090 / 128 PAIRS</span><span>后训练耗时拆解</span></div><div class="timing-row"><div><span>冻结特征抽取</span><strong>46.23 <small>s</small></strong></div><div class="timing-track"><span class="feature-time"></span></div></div><div class="timing-row"><div><span>两轮策略头训练与评估</span><strong>0.19 <small>s</small></strong></div><div class="timing-track"><span class="head-time"></span></div></div><p>两轮训练复用缓存特征。0.19 秒包含每轮验证和最终评估，不包含特征抽取、模型加载与保存；它不是端到端耗时，也不是多次运行的平均值。</p></div>
         <div class="loss-study"><span class="micro-label">VALIDATION / 25 PAIRS</span><div class="loss-values"><span>0.693</span><span class="loss-arrow" aria-hidden="true">→</span><strong>0.437</strong></div><p>DPO 验证损失</p><dl><div><dt>偏好排序准确率</dt><dd>100% → 100%</dd></div><div><dt>平均偏好边际</dt><dd>6.71 → 7.98</dd></div><div><dt>KL（相对参考策略）</dt><dd>0.00119</dd></div></dl><p class="small-note">二元标签自动生成偏好，103 训练 / 25 验证。未证明真实人工反馈收益；这 25 条样本在训练前已全部排序正确。</p></div></div>
-      <div class="more-results"><article><span class="micro-label">2 × 2 MOSAIC / STRESS TEST</span><h3>四张图放在一起，会怎样？</h3><p>200 张拼图准确率 <strong>89.5%</strong>，单违规格场景为 <strong>84.0%</strong>。缩小目标和多图干扰值得独立评估，拼图结论不能直接当成四张图各自的结论。</p><a class="text-link" href="../docs/MOSAIC_2X2_RESULT_V1.md" data-doc-path="docs/MOSAIC_2X2_RESULT_V1.md">查看四图实验 ↗</a></article><article><span class="micro-label">Q4 / LINUX CPU PROTOTYPE</span><h3>走向无需联网的本地运行。</h3><p>现有单头 Q4 实验目录约 <strong>479 MB</strong>，Linux CPU 四线程峰值 RSS 约 <strong>859 MiB</strong>。8 条抽样决策一致；尚未完成全量回归与手机实测。</p><a class="text-link" href="../docs/EDGE_STATUS.md" data-doc-path="docs/EDGE_STATUS.md">查看端侧进展 ↗</a></article></div>
+      <div class="more-results"><article><span class="micro-label">2 × 2 MOSAIC / STRESS TEST</span><h3>四张图放在一起，会怎样？</h3><p>200 张拼图准确率 <strong>89.5%</strong>，单违规格场景为 <strong>84.0%</strong>。缩小目标和多图干扰值得独立评估，拼图结论不能直接当成四张图各自的结论。</p><a class="text-link" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/MOSAIC_2X2_RESULT_V1.md" data-doc-path="docs/MOSAIC_2X2_RESULT_V1.md">查看四图实验 ↗</a></article><article><span class="micro-label">Q4 / LINUX CPU PROTOTYPE</span><h3>Linux CPU 上的单头量化试验。</h3><p>现有单头 Q4 实验目录约 <strong>479 MB</strong>，Linux CPU 四线程峰值 RSS 约 <strong>859 MiB</strong>。8 条抽样决策一致；尚未完成全量回归与手机实测。</p><a class="text-link" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/EDGE_STATUS.md" data-doc-path="docs/EDGE_STATUS.md">查看端侧进展 ↗</a></article></div>
     </div></section>
 
-    <section class="section wrap getting-started" id="start"><div class="section-intro"><p class="eyebrow">05 — BUILD YOUR FEEDBACK LOOP</p><h2>从一条<br>人工纠偏<em>开始。</em></h2><p>训练、偏好构建、DPO 和压力测试分别提供命令行工具。先准备自己的数据与起始多头检查点，再开始一次可复现的实验。</p><a class="text-link" href="../docs/TRAINING_GUIDE.md" data-doc-path="docs/TRAINING_GUIDE.md">下载完整训练指南 ↗</a><p class="small-note">示例命令使用 Linux shell。模型与真实数据需另行准备；项目网页只做介绍，审核服务在本地独立运行。</p></div>
+    <section class="section wrap getting-started" id="start"><div class="section-intro"><p class="eyebrow">05 — BUILD YOUR FEEDBACK LOOP</p><h2>准备数据，<br>再开始<em>训练。</em></h2><p>训练、偏好构建、DPO 和压力测试分别提供命令行工具。先准备自己的数据与起始多头检查点，再运行对应命令。</p><a class="text-link" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/TRAINING_GUIDE.md" data-doc-path="docs/TRAINING_GUIDE.md">阅读完整训练指南 ↗</a><p class="small-note">示例命令使用 Linux shell。模型与真实数据需另行准备；项目网页只做介绍，审核服务在本地独立运行。</p></div>
       <div class="terminal"><div class="terminal-top"><div role="tablist" aria-label="命令示例"><button role="tab" id="code-tab-0" aria-selected="true" aria-controls="code-panel" data-code="0">安装</button><button role="tab" id="code-tab-1" aria-selected="false" aria-controls="code-panel" tabindex="-1" data-code="1">偏好 → DPO</button><button role="tab" id="code-tab-2" aria-selected="false" aria-controls="code-panel" tabindex="-1" data-code="2">评测</button></div><button id="copy-code" aria-label="复制当前命令">复制</button></div><pre id="code-panel" role="tabpanel" aria-labelledby="code-tab-0" tabindex="0"><code id="code-content"># 在项目根目录创建训练环境
 python -m venv .venv
 source .venv/bin/activate
@@ -106,9 +106,9 @@ python scripts/validate_data.py \
   --image-root .</code></pre><p id="copy-status" role="status" aria-live="polite">PYTHON ≥ 3.10 · TRANSFORMERS 5 · SINGLE-GPU TRAINING</p></div>
     </section>
 
-    <section class="closing wrap"><p class="eyebrow">SMALL MODEL. CLEAR DECISIONS. SHORTER ITERATIONS.</p><h2>让审核系统，<em>更容易改进。</em></h2><div class="actions"><a class="button primary" href="../docs/HUMAN_FEEDBACK_AND_RL.md" data-doc-path="docs/HUMAN_FEEDBACK_AND_RL.md">阅读后训练指南 ↗</a><a class="text-link" href="assets/post-training.png" download>下载流程图 ↓</a></div></section>
+    <section class="closing wrap"><p class="eyebrow">DATA → TRAINING → EVALUATION</p><h2>查看数据格式与<em>训练步骤。</em></h2><div class="actions"><a class="button primary" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/HUMAN_FEEDBACK_AND_RL.md" data-doc-path="docs/HUMAN_FEEDBACK_AND_RL.md">阅读后训练指南 ↗</a><a class="text-link" href="assets/post-training.svg" download>下载流程图 ↓</a></div></section>
   </main>
-  <footer class="wrap"><span>Jev-PolicyLite <span class="footer-muted">/ Independent research project</span></span><div><a href="../docs/DESIGN_REFERENCES.md" data-doc-path="docs/DESIGN_REFERENCES.md">设计参考</a><a href="../docs/GITHUB_PAGES.md" data-doc-path="docs/GITHUB_PAGES.md">部署说明</a><a href="#">回到顶部 ↑</a></div><p>基于 Qwen3.5 的独立审核实验工程，与 Qwen 官方无隶属关系。当前为开源发布预览。</p></footer>
+  <footer class="wrap"><span>Jev-PolicyLite <span class="footer-muted">/ Independent research project</span></span><div><a href="https://github.com/fffffiii/jev-policylite/blob/main/docs/DESIGN_REFERENCES.md" data-doc-path="docs/DESIGN_REFERENCES.md">设计参考</a><a href="https://github.com/fffffiii/jev-policylite/blob/main/docs/GITHUB_PAGES.md" data-doc-path="docs/GITHUB_PAGES.md">部署说明</a><a href="#">回到顶部 ↑</a></div><p>基于 Qwen3.5 的独立审核实验工程，与 Qwen 官方无隶属关系。当前为研究试验版，不是经过生产验证的审核服务。</p></footer>
   <dialog id="figure-dialog" aria-labelledby="dialog-caption"><div class="dialog-toolbar"><p id="dialog-caption"></p><button id="close-dialog" aria-label="关闭大图">关闭 ×</button></div><img id="dialog-image" alt=""><a id="dialog-download" download>下载原图 ↓</a></dialog>
 </body>
 </html>
