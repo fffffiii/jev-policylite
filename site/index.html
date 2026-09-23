@@ -73,7 +73,7 @@
 
     <section class="section wrap" id="post-training">
       <div class="section-heading"><div><p class="eyebrow">03 — POST-TRAINING, MADE LIGHTER</p><h2>缓存特征，<em>只训练策略头。</em></h2></div><p>每条图文记录先编码一次，在本次进程内缓存特征。<br>后续训练轮次不再重复运行主干。</p></div>
-      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training-paper.png" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training-paper.png" width="1536" height="1024" alt="图片、正文和规则由冻结主干编码；缓存特征输入参考头与可训练策略头。chosen/rejected 是用于 DPO 损失的动作标签，梯度只更新策略头。"></button><figcaption>蓝色模块冻结，橙色模块更新；橙色虚线表示梯度，深色虚线表示动作标签。参考头只复制起始策略头，不复制整个主干。</figcaption></figure>
+      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training-paper.png" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training-paper.png" width="1774" height="887" alt="图片、正文和规则由冻结主干编码；缓存特征输入参考头与可训练策略头。chosen/rejected 是用于 DPO 损失的动作标签，只更新策略头。"></button><figcaption>主干和参考策略头冻结，当前策略头是唯一可训练模块；chosen/rejected 是用于损失计算的动作标签。参考头只复制起始策略头，不复制整个主干。</figcaption></figure>
       <div class="training-explorer">
         <div role="tablist" aria-label="后训练阶段" class="stage-tabs">
           <button role="tab" id="stage-tab-0" aria-selected="true" aria-controls="stage-panel" data-stage="0"><span>01</span>监督适配</button>
