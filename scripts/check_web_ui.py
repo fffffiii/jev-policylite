@@ -18,10 +18,14 @@ def load_local_page(page, *, site: bool, fixtures=None):
     html = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.S)
     html = re.sub(r"<link\b[^>]*>", "", html)
     if site:
-        for name in ("architecture", "post-training"):
-            svg = (directory / "assets" / f"{name}.svg").read_bytes()
-            data_url = "data:image/svg+xml;base64," + base64.b64encode(svg).decode()
-            html = html.replace(f"assets/{name}.svg", data_url)
+        # set_content 没有站点基址，内联页面实际引用的本地图片供弹窗检查。
+        for asset in set(re.findall(r"assets/[A-Za-z0-9_.-]+\.(?:svg|png)", html)):
+            source = directory / asset
+            if not source.is_file():
+                continue
+            mime = "image/svg+xml" if source.suffix == ".svg" else "image/png"
+            data_url = f"data:{mime};base64," + base64.b64encode(source.read_bytes()).decode()
+            html = html.replace(asset, data_url)
     page.set_content(html, wait_until="load")
     page.add_style_tag(path=str(directory / ("assets/style.css" if site else "styles.css")))
     if site:
@@ -115,7 +119,7 @@ def main() -> None:
             for figure in page.locator("[data-zoom]").all():
                 figure.click()
                 page.wait_for_function("document.getElementById('dialog-image').complete && document.getElementById('dialog-image').naturalWidth > 0")
-                check(f"site {width}px: SVG dialog", page.locator("#figure-dialog").evaluate("e => e.open"))
+                check(f"site {width}px: image dialog", page.locator("#figure-dialog").evaluate("e => e.open"))
                 page.keyboard.press("Escape")
                 check(f"site {width}px: dialog closes", not page.locator("#figure-dialog").evaluate("e => e.open"))
             if width in (1440, 390):

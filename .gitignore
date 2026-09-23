@@ -31,6 +31,10 @@ site-post-training-dialog.png
 !models/pilot-multihead-v0.1/decision_head.pt
 !models/pilot-multihead-v0.1/attribute_head.pt
 !models/pilot-multihead-v0.1/policy_head.pt
+!models/pilot-multi-photo-v0.1/native_four_position_heads.pt
+!models/pilot-multi-photo-v0.1/native_local_four_position_heads.pt
+!models/pilot-multi-photo-v0.1/native_shared_position_head.pt
+!models/pilot-multi-photo-v0.1/mosaic_four_position_heads.pt
 models/pilot-multihead-v0.1/processor/
 
 # Local package builds

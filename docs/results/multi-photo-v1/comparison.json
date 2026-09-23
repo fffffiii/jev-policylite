@@ -1,0 +1,393 @@
+{
+  "device": "cuda:1",
+  "cases": 200,
+  "policy_counts": {
+    "pilot-explicit-v1": 100,
+    "pilot-suggestive-v1": 100
+  },
+  "scenario_counts": {
+    "all_safe": 50,
+    "all_violation": 50,
+    "one_violation": 50,
+    "two_violations": 50
+  },
+  "notes": "同一批 test 四图组；batched_four 的模型 batch=4，其余每组调用一次。均已加载并预热模型。包含图像读取和预处理；mosaic_online 还包含实时拼图与 JPEG 编码；不含网络传输和模型加载。",
+  "sequential_four": {
+    "end_to_end": {
+      "mean_ms": 537.4707695399411,
+      "p50_ms": 539.9271249771118,
+      "p95_ms": 544.3426626268774
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.89,
+          "precision": 0.8426966292134831,
+          "recall": 0.9036144578313253,
+          "f1": 0.872093023255814,
+          "pr_auc": 0.9661018801196368
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.905,
+          "precision": 0.8809523809523809,
+          "recall": 0.891566265060241,
+          "f1": 0.8862275449101796,
+          "pr_auc": 0.9591685241804124
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.905,
+          "precision": 0.9347826086956522,
+          "recall": 0.8686868686868687,
+          "f1": 0.900523560209424,
+          "pr_auc": 0.9610772529544213
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.905,
+          "precision": 0.9024390243902439,
+          "recall": 0.8705882352941177,
+          "f1": 0.8862275449101796,
+          "pr_auc": 0.9564296412074451
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.90125,
+        "precision": 0.8904899135446686,
+        "recall": 0.8828571428571429,
+        "f1": 0.8866571018651362,
+        "pr_auc": 0.959807935911182
+      },
+      "exact_match": 0.65,
+      "any_violation_accuracy": 0.895,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.66,
+      "one_violation_top1": 0.94
+    },
+    "speedup_vs_sequential_mean": 1.0,
+    "speedup_vs_batched_mean": 0.304749584181615
+  },
+  "batched_four": {
+    "end_to_end": {
+      "mean_ms": 163.7939935270697,
+      "p50_ms": 165.73020815849304,
+      "p95_ms": 169.85197293106467
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.885,
+          "precision": 0.8409090909090909,
+          "recall": 0.891566265060241,
+          "f1": 0.8654970760233918,
+          "pr_auc": 0.9663950375294523
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.905,
+          "precision": 0.8809523809523809,
+          "recall": 0.891566265060241,
+          "f1": 0.8862275449101796,
+          "pr_auc": 0.9585550180603618
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.905,
+          "precision": 0.9347826086956522,
+          "recall": 0.8686868686868687,
+          "f1": 0.900523560209424,
+          "pr_auc": 0.9610556339189262
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.895,
+          "precision": 0.8902439024390244,
+          "recall": 0.8588235294117647,
+          "f1": 0.874251497005988,
+          "pr_auc": 0.9574721791930957
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.8975,
+        "precision": 0.8872832369942196,
+        "recall": 0.8771428571428571,
+        "f1": 0.882183908045977,
+        "pr_auc": 0.9602596762123276
+      },
+      "exact_match": 0.64,
+      "any_violation_accuracy": 0.89,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.66,
+      "one_violation_top1": 0.94
+    },
+    "speedup_vs_sequential_mean": 3.2813826561418757,
+    "speedup_vs_batched_mean": 1.0
+  },
+  "native": {
+    "end_to_end": {
+      "mean_ms": 153.08459024643525,
+      "p50_ms": 154.7276785131544,
+      "p95_ms": 157.76377613656223
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.845,
+          "precision": 0.7954545454545454,
+          "recall": 0.8433734939759037,
+          "f1": 0.8187134502923976,
+          "pr_auc": 0.9171624911587373
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.85,
+          "precision": 0.8533333333333334,
+          "recall": 0.7710843373493976,
+          "f1": 0.810126582278481,
+          "pr_auc": 0.8993511555153425
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.84,
+          "precision": 0.8941176470588236,
+          "recall": 0.7676767676767676,
+          "f1": 0.8260869565217391,
+          "pr_auc": 0.9377502509643235
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.86,
+          "precision": 0.8518518518518519,
+          "recall": 0.8117647058823529,
+          "f1": 0.8313253012048193,
+          "pr_auc": 0.9388791315540963
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.84875,
+        "precision": 0.8480243161094225,
+        "recall": 0.7971428571428572,
+        "f1": 0.8217967599410898,
+        "pr_auc": 0.9194223482701851
+      },
+      "exact_match": 0.55,
+      "any_violation_accuracy": 0.81,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.42,
+      "one_violation_top1": 0.86
+    },
+    "speedup_vs_sequential_mean": 3.5109397273410847,
+    "speedup_vs_batched_mean": 1.0699574219939085
+  },
+  "native_local": {
+    "end_to_end": {
+      "mean_ms": 154.63933430612087,
+      "p50_ms": 154.8878294415772,
+      "p95_ms": 157.4696971103549
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.86,
+          "precision": 0.8089887640449438,
+          "recall": 0.8674698795180723,
+          "f1": 0.8372093023255814,
+          "pr_auc": 0.9415476156514594
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.88,
+          "precision": 0.8933333333333333,
+          "recall": 0.8072289156626506,
+          "f1": 0.8481012658227848,
+          "pr_auc": 0.9416508699611598
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.86,
+          "precision": 0.898876404494382,
+          "recall": 0.8080808080808081,
+          "f1": 0.851063829787234,
+          "pr_auc": 0.9080527104353402
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.9,
+          "precision": 0.9113924050632911,
+          "recall": 0.8470588235294118,
+          "f1": 0.8780487804878049,
+          "pr_auc": 0.9434841533962327
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.875,
+        "precision": 0.8765060240963856,
+        "recall": 0.8314285714285714,
+        "f1": 0.8533724340175953,
+        "pr_auc": 0.9342182235978207
+      },
+      "exact_match": 0.6,
+      "any_violation_accuracy": 0.845,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.5,
+      "one_violation_top1": 0.86
+    },
+    "speedup_vs_sequential_mean": 3.4756407349502356,
+    "speedup_vs_batched_mean": 1.059200068740767
+  },
+  "native_shared": {
+    "end_to_end": {
+      "mean_ms": 153.96623452426866,
+      "p50_ms": 154.11661099642515,
+      "p95_ms": 157.48176197521389
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.865,
+          "precision": 0.85,
+          "recall": 0.8192771084337349,
+          "f1": 0.8343558282208589,
+          "pr_auc": 0.9470316506324677
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.875,
+          "precision": 0.8717948717948718,
+          "recall": 0.8192771084337349,
+          "f1": 0.84472049689441,
+          "pr_auc": 0.9457515465195798
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.86,
+          "precision": 0.8901098901098901,
+          "recall": 0.8181818181818182,
+          "f1": 0.8526315789473684,
+          "pr_auc": 0.9321217506447652
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.885,
+          "precision": 0.918918918918919,
+          "recall": 0.8,
+          "f1": 0.8553459119496856,
+          "pr_auc": 0.947279826505098
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.87125,
+        "precision": 0.8823529411764706,
+        "recall": 0.8142857142857143,
+        "f1": 0.8469539375928677,
+        "pr_auc": 0.9396992982058057
+      },
+      "exact_match": 0.585,
+      "any_violation_accuracy": 0.865,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.54,
+      "one_violation_top1": 0.9
+    },
+    "speedup_vs_sequential_mean": 3.49083531983906,
+    "speedup_vs_batched_mean": 1.0638306121674486
+  },
+  "mosaic_online": {
+    "end_to_end": {
+      "mean_ms": 182.58861447218806,
+      "p50_ms": 181.0210186522454,
+      "p95_ms": 195.43853991199285
+    },
+    "metrics": {
+      "per_position": {
+        "top_left": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.765,
+          "precision": 0.6730769230769231,
+          "recall": 0.8433734939759037,
+          "f1": 0.7486631016042781,
+          "pr_auc": 0.8705619479097673
+        },
+        "top_right": {
+          "count": 200,
+          "positive_count": 83,
+          "accuracy": 0.845,
+          "precision": 0.825,
+          "recall": 0.7951807228915663,
+          "f1": 0.8098159509202454,
+          "pr_auc": 0.9122614053728804
+        },
+        "bottom_left": {
+          "count": 200,
+          "positive_count": 99,
+          "accuracy": 0.82,
+          "precision": 0.8118811881188119,
+          "recall": 0.8282828282828283,
+          "f1": 0.82,
+          "pr_auc": 0.9193706654823544
+        },
+        "bottom_right": {
+          "count": 200,
+          "positive_count": 85,
+          "accuracy": 0.8,
+          "precision": 0.7368421052631579,
+          "recall": 0.8235294117647058,
+          "f1": 0.7777777777777778,
+          "pr_auc": 0.8880208439623073
+        }
+      },
+      "micro": {
+        "count": 800,
+        "positive_count": 350,
+        "accuracy": 0.8075,
+        "precision": 0.7578947368421053,
+        "recall": 0.8228571428571428,
+        "f1": 0.7890410958904109,
+        "pr_auc": 0.8956974934502746
+      },
+      "exact_match": 0.5,
+      "any_violation_accuracy": 0.88,
+      "one_violation_count": 50,
+      "one_violation_exact_match": 0.3,
+      "one_violation_top1": 0.72
+    },
+    "speedup_vs_sequential_mean": 2.9436160140303205,
+    "speedup_vs_batched_mean": 0.8970657562660832
+  }
+}

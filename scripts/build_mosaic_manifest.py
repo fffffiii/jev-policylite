@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="构造 2×2 四图拼接审核压力测试集")
     parser.add_argument("--manifest", required=True, help="源 JSONL 清单")
     parser.add_argument("--image-root", required=True, help="源图片根目录")
-    parser.add_argument("--split", default="test", choices=["validation", "calibration", "test"])
+    parser.add_argument("--split", default="test", choices=["train", "validation", "calibration", "test"])
     parser.add_argument("--output-dir", required=True, help="拼图和布局清单的输出目录")
     parser.add_argument("--output-manifest", required=True, help="生成的 JSONL 清单")
     parser.add_argument("--cases-per-scenario", type=int, default=20)

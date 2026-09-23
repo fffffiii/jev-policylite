@@ -4,7 +4,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[Model](models/pilot-multihead-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page source](site/) · [MIT](LICENSE)
+[Model](models/pilot-multihead-v0.1) · [Four-photo heads](models/pilot-multi-photo-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page source](site/) · [MIT](LICENSE)
 
 Jev-PolicyLite adapts Qwen3.5-0.8B to content moderation. Given an image, accompanying text, and a moderation policy, it predicts a violation score, visual attributes, and a handling action. Inspired by Jev / NanoJev's use of hidden representations for direct scoring, the project implements multi-head training, review-feedback processing, and policy-head preference optimization for moderation experiments. The pilot uses sexual-content severity labels, not a general sensitive-content benchmark.
 
@@ -18,7 +18,7 @@ We study two questions: whether a small model can moderate content using both mu
 
 - **Multi-head moderation:** Qwen3.5's multimodal backbone with task LoRA and separate violation, attribute, and action heads.
 - **Policy-head post-training:** tools that convert review corrections into action preferences and run discrete DPO on cached frozen features.
-- **Training and evaluation tools:** data validation, image-group splits, threshold calibration, head-level evaluation, and 2×2 mosaic stress tests.
+- **Training and evaluation tools:** data validation, image-group splits, threshold calibration, head-level evaluation, and per-image localization and latency tests for four photos in one input.
 - **Model and local service:** a pilot LoRA adapter, three moderation heads, and a FastAPI web interface with resource monitoring.
 
 The repository records training, DPO, and local-deployment trials. The results below come from those experiment notes; they are not a production evaluation.
@@ -77,6 +77,19 @@ These preferences repeat existing binary labels, and all validation pairs were r
 | Linux x86_64, single-head Q4, four CPU threads | About 479 MB model directory; about 859 MiB peak RSS | Decisions matched on 8 sampled cases; full regression is pending |
 
 Details: [mosaic results](docs/MOSAIC_2X2_RESULT_V1.md) and [edge status](docs/EDGE_STATUS.md). Mobile devices, quantized multi-head inference, and Windows deployment have not yet been measured.
+
+### Per-image decisions from four photos in one input
+
+With the backbone and LoRA frozen, four small position heads score the corresponding images in one prefill. The local-readout variant takes a hidden state at the end of each image's visual segment; its four heads contain 12,292 parameters in total. On an RTX 3090, the same **200 groups of four photos (800 per-image labels)** produced these results. Mean latency includes image loading, preprocessing, and inference, but excludes model loading and network transport.
+
+| Method | Per-image accuracy | All four correct | Mean per group |
+| --- | ---: | ---: | ---: |
+| Four serial single-image calls | 90.12% | 65.0% | 537.47 ms |
+| Four independent images, batch=4 | 89.75% | 64.0% | 163.79 ms |
+| One four-image input, local position heads | 87.50% | 60.0% | 154.64 ms |
+| Online 2×2 mosaic, four position heads | 80.75% | 50.0% | 182.59 ms |
+
+The one-input approach is about 3.47× faster than serial calls, but only 5.6% faster than batch=4 while losing 2.25 accuracy points. It is not an accuracy-preserving speedup; batch=4 remains preferable when per-image correctness matters more than a few milliseconds. Labels come from the original images, not a fresh human review of each group. See the [full experiment](docs/MULTI_PHOTO_RESULT_V1.md) for P50/P95, other readouts, and limitations.
 
 ## Getting started
 
