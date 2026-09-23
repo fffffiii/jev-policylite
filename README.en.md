@@ -11,7 +11,7 @@ Jev-PolicyLite adapts Qwen3.5-0.8B to content moderation. Given an image, accomp
 We study two questions: whether a small model can moderate content using both multimodal evidence and policy text, and the training cost of adjusting its actions. Benefits from real human feedback still need separate evaluation. Three moderation heads share one representation. During preference optimization, the backbone is frozen, features are cached, and only the head responsible for blocking, review, or allowing is updated.
 
 <p align="center">
-  <img src="site/assets/architecture.svg" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
+  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
 </p>
 
 ## What is included
@@ -46,7 +46,7 @@ A review record pairs the reviewer's preferred action, `chosen`, with the model'
 The backbone, LoRA, violation head, and attribute head are frozen. Multimodal features are extracted once. The trainable policy head and frozen reference head read the same features, and discrete DPO updates the action probabilities. The reference requires only a copy of the small policy head.
 
 <p align="center">
-  <img src="site/assets/post-training.svg" alt="Post-training: construct action preferences, cache frozen features, and update the policy head with discrete DPO." width="100%">
+  <img src="site/assets/post-training-paper.png" alt="Post-training: construct action preferences, cache frozen features, and update the policy head with discrete DPO." width="100%">
 </p>
 
 Feature reuse reduces repeated encoding. This is useful when existing features distinguish the relevant evidence but the action needs adjustment. Updating the head cannot recover visual details absent from those features. The implementation optimizes discrete action preferences; it does not include online rollouts, PPO, or GRPO.

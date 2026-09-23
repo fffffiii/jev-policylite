@@ -11,7 +11,7 @@ Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输�
 项目测试小模型能否结合图文与规则判断内容，也测量调整处置动作所需的训练开销。三个审核头共享图文表征；偏好优化时冻结主干并缓存特征，只更新预测拦截、复审或放行的策略头。真实人工反馈是否带来收益，仍需单独验证。
 
 <p align="center">
-  <img src="site/assets/architecture.svg" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
+  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
 </p>
 
 ## 项目内容
@@ -46,7 +46,7 @@ Jev / NanoJev 提供了直接评分与决策接口的设计参考。本项目针
 训练时冻结主干、LoRA、违规头和属性头，一次性提取图文特征。当前策略头与冻结参考头读取同一份特征，通过离散 DPO 更新动作概率。参考策略只需复制一个小策略头。
 
 <p align="center">
-  <img src="site/assets/post-training.svg" alt="后训练流程：构建动作偏好、缓存冻结特征、通过离散 DPO 更新策略头。" width="100%">
+  <img src="site/assets/post-training-paper.png" alt="后训练流程：构建动作偏好、缓存冻结特征、通过离散 DPO 更新策略头。" width="100%">
 </p>
 
 这里的计算节省来自特征复用。它适用于已有表征能够区分样本、但处置需要调整的情况；冻结特征丢失的视觉细节，无法靠更新策略头补回。当前实现是离散动作上的偏好优化，不包含在线 rollout、PPO 或 GRPO。

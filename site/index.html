@@ -8,7 +8,7 @@
   <meta property="og:title" content="Jev-PolicyLite — Multimodal moderation with policy-head DPO">
   <meta property="og:description" content="Image, text and policy inputs; three moderation heads; cached-feature preference optimization.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="assets/architecture.png">
+  <meta property="og:image" content="assets/architecture-paper.png">
   <title>Jev-PolicyLite — 图文审核与策略头偏好优化</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="assets/style.css">
@@ -34,7 +34,7 @@
       </div>
       <div class="hero-visual">
         <div class="figure-label"><span>FIG. 01 / SYSTEM OVERVIEW</span><span>输入、共享表征与输出</span></div>
-        <button class="image-button" data-zoom="assets/architecture.svg" data-caption="系统流程图：共享图文表征与三个审核头" aria-label="放大系统流程图"><img src="assets/architecture.svg" width="1536" height="1024" alt="图片、正文与规则经过 Qwen3.5-0.8B，最后一个有效 token 的表征分别进入违规、属性和策略三个审核头。DPO 阶段只更新策略头。" fetchpriority="high"></button>
+        <button class="image-button" data-zoom="assets/architecture-paper.png" data-caption="系统流程图：共享图文表征与三个审核头" aria-label="放大系统流程图"><img src="assets/architecture-paper.png" width="1536" height="1024" alt="图片、正文与规则经过 Qwen3.5-0.8B，最后一个有效 token 的表征分别进入违规、属性和策略三个审核头。DPO 阶段只更新策略头。" fetchpriority="high"></button>
         <div class="figure-caption"><span>三个头独立输出，共享同一份表征。</span><span>点击查看大图 ↗</span></div>
         <div class="visual-note"><span class="mono">THE IDEA</span><p>DPO 冻结主干，<br>只更新策略头。</p><span class="note-arrow" aria-hidden="true">↗</span></div>
       </div>
@@ -73,7 +73,7 @@
 
     <section class="section wrap" id="post-training">
       <div class="section-heading"><div><p class="eyebrow">03 — POST-TRAINING, MADE LIGHTER</p><h2>缓存特征，<em>只训练策略头。</em></h2></div><p>每条图文记录先编码一次，在本次进程内缓存特征。<br>后续训练轮次不再重复运行主干。</p></div>
-      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training.svg" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training.svg" width="1536" height="1024" alt="图片、正文和规则由冻结主干编码；缓存特征输入参考头与可训练策略头。chosen/rejected 是用于 DPO 损失的动作标签，梯度只更新策略头。"></button><figcaption>蓝色模块冻结，橙色模块更新；橙色虚线表示梯度，深色虚线表示动作标签。参考头只复制起始策略头，不复制整个主干。</figcaption></figure>
+      <figure class="paper-figure"><div class="figure-label"><span>FIG. 02 / PREFERENCE OPTIMIZATION</span><span>后训练工作流</span></div><button class="image-button" data-zoom="assets/post-training-paper.png" data-caption="后训练流程：偏好对、冻结特征与离散 DPO" aria-label="放大后训练流程图"><img src="assets/post-training-paper.png" width="1536" height="1024" alt="图片、正文和规则由冻结主干编码；缓存特征输入参考头与可训练策略头。chosen/rejected 是用于 DPO 损失的动作标签，梯度只更新策略头。"></button><figcaption>蓝色模块冻结，橙色模块更新；橙色虚线表示梯度，深色虚线表示动作标签。参考头只复制起始策略头，不复制整个主干。</figcaption></figure>
       <div class="training-explorer">
         <div role="tablist" aria-label="后训练阶段" class="stage-tabs">
           <button role="tab" id="stage-tab-0" aria-selected="true" aria-controls="stage-panel" data-stage="0"><span>01</span>监督适配</button>
@@ -106,7 +106,7 @@ python scripts/validate_data.py \
   --image-root .</code></pre><p id="copy-status" role="status" aria-live="polite">PYTHON ≥ 3.10 · TRANSFORMERS 5 · SINGLE-GPU TRAINING</p></div>
     </section>
 
-    <section class="closing wrap"><p class="eyebrow">DATA → TRAINING → EVALUATION</p><h2>查看数据格式与<em>训练步骤。</em></h2><div class="actions"><a class="button primary" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/HUMAN_FEEDBACK_AND_RL.md" data-doc-path="docs/HUMAN_FEEDBACK_AND_RL.md">阅读后训练指南 ↗</a><a class="text-link" href="assets/post-training.svg" download>下载流程图 ↓</a></div></section>
+    <section class="closing wrap"><p class="eyebrow">DATA → TRAINING → EVALUATION</p><h2>查看数据格式与<em>训练步骤。</em></h2><div class="actions"><a class="button primary" href="https://github.com/fffffiii/jev-policylite/blob/main/docs/HUMAN_FEEDBACK_AND_RL.md" data-doc-path="docs/HUMAN_FEEDBACK_AND_RL.md">阅读后训练指南 ↗</a><a class="text-link" href="assets/post-training-paper.png" download>下载流程图 ↓</a></div></section>
   </main>
   <footer class="wrap"><span>Jev-PolicyLite <span class="footer-muted">/ Independent research project</span></span><div><a href="https://github.com/fffffiii/jev-policylite/blob/main/docs/DESIGN_REFERENCES.md" data-doc-path="docs/DESIGN_REFERENCES.md">设计参考</a><a href="https://github.com/fffffiii/jev-policylite/blob/main/docs/GITHUB_PAGES.md" data-doc-path="docs/GITHUB_PAGES.md">部署说明</a><a href="#">回到顶部 ↑</a></div><p>基于 Qwen3.5 的独立审核实验工程，与 Qwen 官方无隶属关系。当前为研究试验版，不是经过生产验证的审核服务。</p></footer>
   <dialog id="figure-dialog" aria-labelledby="dialog-caption"><div class="dialog-toolbar"><p id="dialog-caption"></p><button id="close-dialog" aria-label="关闭大图">关闭 ×</button></div><img id="dialog-image" alt=""><a id="dialog-download" download>下载原图 ↓</a></dialog>
