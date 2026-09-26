@@ -1,5 +1,6 @@
 """评测协议的回归测试：阈值不看测试标签，置信区间按原图分组。"""
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,14 @@ def load_script(name):
 
 
 bench = load_script("benchmark_nsfw")
+
+
+@pytest.mark.parametrize("script", ["benchmark_nsfw", "experiment_multi_photo"])
+def test_statistical_helpers_import_without_model_dependencies(monkeypatch, script):
+    # 模拟 CI 未安装主干依赖，避免本机完整环境掩盖导入错误。
+    for name in ("transformers", "peft", "accelerate", "qwen35_moderation.model", "qwen35_moderation.runtime"):
+        monkeypatch.setitem(sys.modules, name, None)
+    load_script(script)
 
 
 def test_test_scores_do_not_choose_calibration_threshold():

@@ -22,10 +22,8 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
 from qwen35_moderation.data import MultimodalCollator, configure_max_pixels, read_manifest
-from qwen35_moderation.model import model_inputs
 from qwen35_moderation.mosaic import make_mosaic
 from qwen35_moderation.multi_photo import FourPositionHeads, POSITION_NAMES, SharedPositionHead, load_four_position_heads, load_shared_position_head, native_inputs, validate_four_image_layout, vision_end_features
-from qwen35_moderation.runtime import load_checkpoint
 
 
 def parse_args() -> argparse.Namespace:
@@ -97,6 +95,9 @@ def encode(args: argparse.Namespace) -> None:
         raise ValueError("encode 必须指定 --mode")
     if args.mode == "native_shared":
         raise ValueError("native_shared 复用 native_local 特征；请只运行 --stage fit")
+    # 数据校验和缓存特征训练无需加载主干模型依赖。
+    from qwen35_moderation.runtime import load_checkpoint
+
     device = torch.device(args.device)
     model, processor, _, _ = load_checkpoint(args.checkpoint, device)
     model.eval()
@@ -271,6 +272,9 @@ def fit(args: argparse.Namespace) -> None:
 
 
 def benchmark(args: argparse.Namespace) -> None:
+    from qwen35_moderation.model import model_inputs
+    from qwen35_moderation.runtime import load_checkpoint
+
     if args.benchmark_cases < 1:
         raise ValueError("benchmark-cases 必须大于 0")
     device = torch.device(args.device)

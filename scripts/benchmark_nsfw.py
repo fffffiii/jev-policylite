@@ -22,7 +22,6 @@ from sklearn.metrics import f1_score
 
 from qwen35_moderation.data import MultimodalCollator, configure_max_pixels, find_group_leakage, read_manifest
 from qwen35_moderation.metrics import choose_threshold, classification_metrics
-from qwen35_moderation.model import model_inputs
 
 
 EXPOSED = {"BUTTOCKS_EXPOSED", "FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED", "MALE_GENITALIA_EXPOSED", "ANUS_EXPOSED"}
@@ -117,7 +116,10 @@ class Runner:
         self.device = torch.device(args.device)
         self.meta = {}
         if args.model.startswith("jev"):
+            # 仅运行 Jev 时加载模型依赖，统计工具可在轻量 CPU 环境导入。
+            from qwen35_moderation.model import model_inputs
             from qwen35_moderation.runtime import load_checkpoint
+            self.model_inputs = model_inputs
             self.model, processor, _, _ = load_checkpoint(args.checkpoint, self.device)
             pixels = 50176 if args.model == "jev_224" else 200704
             configure_max_pixels(processor, pixels)
@@ -166,7 +168,7 @@ class Runner:
         start = time.perf_counter()
         args = self.args
         if args.model.startswith("jev"):
-            encoded = model_inputs(self.collator(rows))
+            encoded = self.model_inputs(self.collator(rows))
         elif args.model == "nudenet":
             prepared = [self.nude._read_image(str(Path(args.image_root) / r["image"]), 320) for r in rows]
             encoded = np.vstack([p[0] for p in prepared])
