@@ -6,13 +6,43 @@
 
 [Model](models/pilot-multihead-v0.1) · [Four-photo heads](models/pilot-multi-photo-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page source](site/) · [MIT](LICENSE)
 
-Jev-PolicyLite adapts Qwen3.5-0.8B to content moderation. Given an image, accompanying text, and a moderation policy, it predicts a violation score, visual attributes, and a handling action. Inspired by Jev / NanoJev's use of hidden representations for direct scoring, the project implements multi-head training, review-feedback processing, and policy-head preference optimization for moderation experiments. The pilot uses sexual-content severity labels, not a general sensitive-content benchmark.
+Jev-PolicyLite is a lightweight multimodal decision project for content moderation. Built on Qwen3.5-0.8B, it reads an image, accompanying text, and moderation rules together, then predicts a violation score, visual attributes, and a handling action in one forward pass. Inspired by Jev / NanoJev's direct-scoring approach, it provides multi-head training, review-feedback processing, and policy-head preference optimization.
 
-We study two questions: whether a small model can moderate content using both multimodal evidence and policy text, and the training cost of adjusting its actions. Benefits from real human feedback still need separate evaluation. Three moderation heads share one representation. During preference optimization, the backbone is frozen, features are cached, and only the head responsible for blocking, review, or allowing is updated.
+## Core approach: define a finite set of decisions
 
-<p align="center">
-  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
-</p>
+**Define the choices the model must make, then train their scores.** For tasks with a known label set, examples can be framed as multiple-choice questions under a consistent prompt template. Human annotations or teacher-model distillation provide supervision. After encoding the input once, the model returns option probabilities, which application code turns into a structured result.
+
+```mermaid
+flowchart LR
+    A["1. Prepare data<br/>Consistent template and options<br/>Human labels / teacher distillation<br/>Correct answer → option label"]
+    B["2. Train the classifier<br/>Encode input → option logits<br/>Cross-entropy over the options<br/>Update selected model parameters"]
+    C["3. Return a decision<br/>New example → one prefill<br/>Option softmax → probabilities<br/>Code assembles labels and JSON"]
+    A -->|Labeled examples| B
+    B -->|Trained model| C
+    classDef data fill:#fff5db,stroke:#c99532,color:#263449,stroke-width:1.5px;
+    classDef train fill:#eaf3ff,stroke:#6289be,color:#263449,stroke-width:1.5px;
+    classDef output fill:#eaf7ef,stroke:#639d7b,color:#263449,stroke-width:1.5px;
+    class A data;
+    class B train;
+    class C output;
+```
+
+The diagram describes the fixed-option approach. **Jev-PolicyLite applies it to moderation: one shared multimodal encoding feeds separate violation, attribute, and action heads.** Violation and co-occurring attributes use sigmoid outputs; mutually exclusive actions use softmax. Application code assembles the result, so JSON does not need to be generated token by token. Each head reads the hidden representation through its own `LayerNorm + Linear` layer.
+
+When handling criteria change, review corrections can be converted into action preferences. With the backbone and LoRA frozen, their features can be cached and reused while discrete DPO updates only the policy head. Content recognition and action adjustment become separate training stages whose costs and benefits can be measured independently.
+
+<details>
+<summary>Fixed-option implementation: labels, loss, and the readout position</summary>
+
+1. **Label mapping.** When options use vocabulary tokens, verify that each option corresponds to one distinct token in the actual prompt context, and store the option-index-to-token-ID mapping. The cross-entropy target is an index within the candidate set. A multi-token option cannot be scored from just one of its tokens.
+2. **Training objective.** Let `z` be the vocabulary logits at the answer-prediction position and `S` the candidate token IDs. Compute `p = softmax(z[S])` and the loss `-log p[y]` for the correct option. Normalization is over the candidates. Masking prompt positions in a language-model loss still normalizes over the full vocabulary, which is a different objective.
+3. **Readout position.** Inference reads the hidden state or next-token logits at the last valid **input** token. These are available when prefill finishes; answer labels are used only for supervision. No answer needs to be generated before the readout. The full multimodal encoding still has to run.
+
+The supervised experiments in this repository use content-severity annotations and derived labels; they do not report teacher-model distillation. The training code uses BCE / cross-entropy on task heads. This diagram summarizes a modeling approach, not a full reproduction of Jev. A single forward pass avoids subsequent text generation, but does not establish a speed advantage over dedicated vision classifiers; measured comparisons appear below.
+
+</details>
+
+The pilot focuses on sexual-content severity labels, so its results do not establish effectiveness across all sensitive-content categories. Benefits from real human feedback still need separate evaluation.
 
 ## What is included
 
@@ -26,6 +56,10 @@ The repository records training, DPO, and local-deployment trials. The results b
 ## Method
 
 ### Image, text, and policy input
+
+<p align="center">
+  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite: image, text, and policy share a representation feeding violation, attribute, and policy heads." width="100%">
+</p>
 
 The model reads the last valid token's hidden representation and passes it to three `LayerNorm + Linear` heads:
 

@@ -6,13 +6,43 @@
 
 [模型](models/pilot-multihead-v0.1) · [四图检测头](models/pilot-multi-photo-v0.1) · [训练指南](docs/TRAINING_GUIDE.md) · [实验记录](docs/EXPERIMENTS.md) · [项目页面源码](site/) · [MIT](LICENSE)
 
-Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输入，直接预测违规分数、视觉属性和处置动作。项目参考 Jev / NanoJev 直接从隐藏表征评分的做法，提供多头训练、人工复核记录转换和策略头偏好优化工具。目前的试验主要使用性暗示、裸露与色情分级数据，不代表对所有敏感内容都有效。
+Jev-PolicyLite 是一个面向内容审核的轻量多模态决策项目。它基于 Qwen3.5-0.8B，联合读取图片、正文和审核规则，在一次前向中预测违规分数、视觉属性和处置动作。项目借鉴 Jev / NanoJev 的直接评分思路，提供多头训练、人工复核记录转换和策略头偏好优化工具。
 
-项目测试小模型能否结合图文与规则判断内容，也测量调整处置动作所需的训练开销。三个审核头共享图文表征；偏好优化时冻结主干并缓存特征，只更新预测拦截、复审或放行的策略头。真实人工反馈是否带来收益，仍需单独验证。
+## 核心范式：把任务收敛为有限决策
 
-<p align="center">
-  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
-</p>
+**先定义模型需要做出的选择，再训练这些选择的分数。** 对于标签集合明确的任务，可以将样本组织成统一模板下的选择题，用人工标注或教师模型蒸馏提供监督。模型完成一次输入编码后，直接给出各选项的概率，由业务代码整理为结构化结果。
+
+```mermaid
+flowchart LR
+    A["① 构造数据<br/>统一模板与候选选项<br/>人工标注 / 教师模型蒸馏<br/>正确答案 → 选项标签"]
+    B["② 分类训练<br/>输入编码 → 选项 logits<br/>在候选集合内计算交叉熵<br/>更新选定的模型参数"]
+    C["③ 决策输出<br/>新样本 → 一次 prefill<br/>选项 softmax → 概率<br/>代码封装标签与 JSON"]
+    A -->|带标签样本| B
+    B -->|训练后的模型| C
+    classDef data fill:#fff5db,stroke:#c99532,color:#263449,stroke-width:1.5px;
+    classDef train fill:#eaf3ff,stroke:#6289be,color:#263449,stroke-width:1.5px;
+    classDef output fill:#eaf7ef,stroke:#639d7b,color:#263449,stroke-width:1.5px;
+    class A data;
+    class B train;
+    class C output;
+```
+
+上图概括固定选项路线。**Jev-PolicyLite 将这一思路用于审核：共享一次图文编码，分别训练违规、属性和处置三个任务头。** 违规与可共存属性使用 sigmoid，互斥的处置动作使用 softmax；结果由代码封装，无需逐 token 生成 JSON。三个头直接读取隐藏表征，通过独立的 `LayerNorm + Linear` 层输出任务分数。
+
+当审核标准需要调整时，人工纠偏可整理为动作偏好对。在主干与 LoRA 冻结的条件下，图文特征可以缓存复用，通过离散 DPO 只更新策略头。这把内容识别与处置调整分成两个训练阶段，便于测量后训练的成本和收益。
+
+<details>
+<summary>固定选项路线的实现要点：标签、损失与读出位置</summary>
+
+1. **标签映射。** 若使用词表中的选项 token，需确认选项在实际提示上下文中对应单个、互不相同的 token，并保存“选项索引 ↔ token ID”映射。交叉熵的目标是候选集合内的类别索引；多 token 选项不能只取其中一个 token 的分数。
+2. **训练目标。** 设答案预测位置的词表 logits 为 `z`，候选 token ID 集合为 `S`，则 `p = softmax(z[S])`，损失为正确选项的 `-log p[y]`。这里在候选集合内归一化；仅屏蔽 prompt 位置的语言模型损失，仍会在整个词表上归一化，是不同的目标。
+3. **读出位置。** 推理读取的是最后一个有效**输入** token 对应的隐藏表征或下一 token logits。这个位置在 prefill 完成时已经可用，答案标签只用于监督，无需先生成答案再取其末尾 token。完整的图文编码仍然需要执行。
+
+本仓库的现有监督实验使用内容等级标注及其映射，没有报告教师模型蒸馏实验；训练代码采用任务头上的 BCE / 交叉熵。上图是建模范式的概括，不构成 Jev 的完整复现。一次前向省去了后续文本生成，但不能据此推断它快于专用视觉分类器，实测对照见下文。
+
+</details>
+
+目前的试验主要使用性暗示、裸露与色情分级数据，不代表对所有敏感内容都有效；真实人工反馈带来的收益仍需单独验证。
 
 ## 项目内容
 
@@ -26,6 +56,10 @@ Jev-PolicyLite 基于 Qwen3.5-0.8B，将图片、正文和审核规则作为输�
 ## 方法
 
 ### 图文与规则联合审核
+
+<p align="center">
+  <img src="site/assets/architecture-paper.png" alt="Jev-PolicyLite 架构：图文与规则编码为共享表征，连接违规、属性与策略三个审核头。" width="100%">
+</p>
 
 模型取最后一个有效 token 的隐藏表征，接三个 `LayerNorm + Linear` 头：
 
