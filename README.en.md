@@ -1,6 +1,6 @@
 # Jev-PolicyLite
 
-**A lightweight multimodal decision model for content moderation**
+**Moderate with one multimodal encoding; adapt actions with lightweight post-training**
 
 [中文](README.md) | [English](README.en.md)
 
@@ -29,7 +29,21 @@ flowchart LR
 
 The diagram describes the fixed-option approach. **Jev-PolicyLite applies it to moderation: one shared multimodal encoding feeds separate violation, attribute, and action heads.** Violation and co-occurring attributes use sigmoid outputs; mutually exclusive actions use softmax. Application code assembles the result, so JSON does not need to be generated token by token. Each head reads the hidden representation through its own `LayerNorm + Linear` layer.
 
-When handling criteria change, review corrections can be converted into action preferences. With the backbone and LoRA frozen, their features can be cached and reused while discrete DPO updates only the policy head. Content recognition and action adjustment become separate training stages whose costs and benefits can be measured independently.
+### Why Jev-style decisions are a natural fit for post-training
+
+**The model predicts action probabilities, and feedback changes those probabilities: prediction and post-training operate on the same decision space.** From a training-interface perspective, direct decision models naturally accommodate supervised corrections, preference optimization, and reward-driven policy learning. In moderation, the input contains the image, text, and rules; the output is a distribution over `block / review / allow`. A reviewer's correction refers to those same actions.
+
+| Structural property | Why it helps post-training |
+| --- | --- |
+| Feedback refers directly to an action | Correcting “allow” to “review” produces a preference pair with `chosen=review` and `rejected=allow` for the same input. Annotations map directly to the model's outputs. |
+| The model exposes the action distribution | Preference objectives can use action log-probabilities directly to favor the chosen action over the rejected one. A finite action set also makes KL to a reference policy straightforward to compute. |
+| Decisions do not require text generation | In this project's discrete DPO, one encoding yields both chosen and rejected probabilities. Training requires neither answer generation nor parsing generated responses. |
+
+**Jev-PolicyLite turns this fit into inexpensive policy-head post-training.** When existing representations distinguish the relevant evidence and the handling tradeoff needs adjustment, we freeze the backbone and LoRA, encode each multimodal record once, and cache its features. Subsequent epochs run only the small policy head; the reference policy needs only a copy of that head. Review feedback can then follow a repeatable path: review records → action preferences → policy-head updates → independent evaluation.
+
+There are two benefits: **direct decisions make feedback easy to train on; frozen features and separate task heads reduce the computation.** The latter is this project's implementation choice and also applies to other finite-action models. Updating the backbone or LoRA requires recomputing the cached features. Returning probabilities does not establish calibration; preference ranking, false positives, and recall still need separate evaluation.
+
+Jev's authors call their reinforcement-learning method for calibrated decisions [RLCD](https://typesafe.ai/blog/introducing-system-one-models-and-jev). This repository implements [discrete DPO](https://arxiv.org/abs/2305.18290) over moderation actions and provides a [training script](scripts/train_policy_dpo.py); it does not reproduce the official RLCD method. Existing experiments validate feature caching and policy-head updates. Quality gains from real human feedback remain to be evaluated.
 
 <details>
 <summary>Fixed-option implementation: labels, loss, and the readout position</summary>
