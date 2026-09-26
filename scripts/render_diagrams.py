@@ -39,7 +39,8 @@ def main() -> None:
     assets = Path(__file__).resolve().parents[1] / "site" / "assets"
     for name in ("architecture", "post-training"):
         source, output = assets / f"{name}.svg", assets / f"{name}.png"
-        svg = source.read_bytes()
+        # Git 在 Windows 与 Linux 间转换换行；渲染和新摘要统一使用 LF。
+        svg = source.read_bytes().replace(b"\r\n", b"\n")
         root = ET.fromstring(svg)
         width, height = int(root.attrib["width"]), int(root.attrib["height"])
         digest = hashlib.sha256(svg).hexdigest()
@@ -47,7 +48,9 @@ def main() -> None:
             if not output.is_file():
                 raise SystemExit(f"缺少 PNG：{output}")
             with Image.open(output) as image:
-                if image.size != (width, height) or image.info.get("svg_sha256") != digest:
+                # 兼容已发布 PNG 中按 Windows CRLF 源码保存的旧摘要。
+                legacy_digest = hashlib.sha256(svg.replace(b"\n", b"\r\n")).hexdigest()
+                if image.size != (width, height) or image.info.get("svg_sha256") not in {digest, legacy_digest}:
                     raise SystemExit(f"PNG 与 SVG 源码不匹配：{output}")
             print(f"OK: {output.name}")
         else:
