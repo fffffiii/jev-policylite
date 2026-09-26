@@ -54,7 +54,8 @@ def split_records(root: Path, split: str, limit: int | None = None) -> list[tupl
     rows = read_manifest(directory / "manifest.jsonl")
     layouts = [json.loads(line) for line in (directory / "layouts.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     by_id = {str(layout["sample_id"]): layout for layout in layouts}
-    if len(by_id) != len(layouts) or len(rows) != len(layouts):
+    row_ids = [str(row["sample_id"]) for row in rows]
+    if len(by_id) != len(layouts) or len(set(row_ids)) != len(rows) or set(row_ids) != set(by_id):
         raise ValueError(f"{split} 清单和布局数量或 sample_id 不一致")
     result = []
     for row in rows[:limit]:
@@ -166,10 +167,12 @@ def encode(args: argparse.Namespace) -> None:
 def binary_metrics(labels: np.ndarray, scores: np.ndarray) -> dict[str, Any]:
     predicted = (scores >= 0.5).astype(np.int64)
     precision, recall, f1, _ = precision_recall_fscore_support(labels, predicted, average="binary", zero_division=0)
+    negative_count = int((labels == 0).sum())
     return {
         "count": int(labels.size), "positive_count": int(labels.sum()),
         "accuracy": float(np.mean(labels == predicted)), "precision": float(precision),
         "recall": float(recall), "f1": float(f1),
+        "fpr": float(((predicted == 1) & (labels == 0)).sum() / negative_count) if negative_count else None,
         "pr_auc": float(average_precision_score(labels, scores)) if len(np.unique(labels)) == 2 else None,
     }
 
@@ -413,6 +416,7 @@ def benchmark(args: argparse.Namespace) -> None:
         "device": str(device), "cases": len(records),
         "policy_counts": dict(Counter(str(row["policy_id"]) for row, _, _ in records)),
         "scenario_counts": dict(Counter(str(layout["scenario"]) for _, layout, _ in records)),
+        "unique_original_images": len({str(tile["group_id"]) for _, layout, _ in records for tile in layout["tiles"]}),
         "notes": "同一批 test 四图组；batched_four 的模型 batch=4，其余每组调用一次。均已加载并预热模型。包含图像读取和预处理；mosaic_online 还包含实时拼图与 JPEG 编码；不含网络传输和模型加载。",
     }
     for mode in group_times:
@@ -425,6 +429,15 @@ def benchmark(args: argparse.Namespace) -> None:
     output_path = Path(args.output_root) / "comparison.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    # 保存逐组输出和原始计时，支持复算指标，不能把重复原图当成独立样本。
+    with output_path.with_name("comparison_samples.jsonl").open("w", encoding="utf-8") as handle:
+        for index, (row, layout, target) in enumerate(records):
+            handle.write(json.dumps({
+                "sample_id": row["sample_id"], "policy_id": row["policy_id"], "scenario": layout["scenario"],
+                "group_ids": [tile["group_id"] for tile in layout["tiles"]], "labels": list(target),
+                "scores": {mode: values[index] for mode, values in scores.items()},
+                "latency_ms": {mode: values[index] for mode, values in group_times.items()},
+            }, ensure_ascii=False) + "\n")
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), flush=True)
 
 

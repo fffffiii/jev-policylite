@@ -77,3 +77,14 @@ python scripts/evaluate_mosaic_heads.py \
   --allow-source-level-proxy \
   --output outputs/mosaic-2x2/evaluation/mosaic_head_metrics.json
 ```
+
+## 公开鉴黄系统对照与数据核查
+
+2026-09-26 新增 Falconsai、Giacomo 五分类和 NudeNet 320n 的同机对比，并检查源图分组、四图位置标签和编号。协议、完整质量/延迟/内存表与复现步骤见 [NSFW_COMPARISON_V1.md](NSFW_COMPARISON_V1.md)。
+
+- `scripts/audit_experiment_data.py`：检查原图跨划分、标签映射、四图布局与检查点散列。
+- `scripts/download_nsfw_baselines.py`：按固定 revision 下载两种 ViT 对照模型。
+- `scripts/benchmark_nsfw.py`：独立校准、全量测试、单张与 batch=4 预热计时；逐模型运行。
+- `scripts/run_nsfw_comparison.sh`：按顺序运行各系统，避免 GPU 争用。
+- `scripts/benchmark_nsfw_paired.py`：覆盖全部输入预热后，交错测量各系统；最终速度表使用此协议。
+- `scripts/report_nsfw_benchmark.py`：从 JSON/JSONL 生成汇总、README 表格及 PNG/SVG/PDF 图。

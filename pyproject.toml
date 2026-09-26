@@ -23,6 +23,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
 browser = ["playwright>=1.50,<2"]
+plots = ["matplotlib>=3.8,<4"]
 web = [
   "fastapi>=0.115,<1",
   "python-multipart>=0.0.20,<1",

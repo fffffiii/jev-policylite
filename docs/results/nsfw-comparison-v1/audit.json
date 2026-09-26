@@ -1,0 +1,43 @@
+{
+  "source_manifest_sha256": "e3ec425b2c53ada7ee2e40278318b20fe1e22c509c4d4ba1c3e3e6e762534ea1",
+  "source_rows": 6000,
+  "source_unique_images": 3000,
+  "source_split_rows": {
+    "train": 3600,
+    "validation": 600,
+    "calibration": 600,
+    "test": 1200
+  },
+  "source_group_overlap": 0,
+  "source_pixel_hash_overlap": 0,
+  "multi_photo": {
+    "train": {
+      "groups": 480,
+      "image_occurrences": 1920,
+      "unique_originals": 1127
+    },
+    "validation": {
+      "groups": 120,
+      "image_occurrences": 480,
+      "unique_originals": 234
+    },
+    "test": {
+      "groups": 200,
+      "image_occurrences": 800,
+      "unique_originals": 426
+    }
+  },
+  "multi_original_overlap": 0,
+  "multi_sample_id_reused_across_splits": 200,
+  "notes": [
+    "旧四图 sample_id 在不同 split 文件夹复用；以 (split, sample_id) 为主键。",
+    "像素散列与分组校验不能证明不同来源、人或未知预训练集之间没有重叠。"
+  ],
+  "errors": [],
+  "checkpoint_sha256": {
+    "adapter/adapter_model.safetensors": "43af70aefab7ef251de397fbe2abe703f61f36697abee2ae125922c5871d8f3c",
+    "attribute_head.pt": "36b8933bd2c311dd8769926afdda978cca64a47a7c37f4623ee2d441a719cc73",
+    "decision_head.pt": "507845d288643bf5fc1c3caeebb915c8863c89cab23cb3f77ce9a6818fcb86a1",
+    "policy_head.pt": "c97d6fdbb628eadfdfc34ff96437634b51b28735f4b053ac32c31378f9890293"
+  }
+}

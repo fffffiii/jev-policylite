@@ -105,7 +105,7 @@ def main() -> None:
                     for image in images:
                         image.close()
                 slug_policy = "".join(char if char.isalnum() else "-" for char in policy_id).strip("-")
-                stem = f"mosaic-{slug_policy}-{scenario}-{case_index:03d}"
+                stem = f"mosaic-{args.split}-{slug_policy}-{scenario}-{case_index:03d}"
                 image_name = f"{stem}.jpg"
                 mosaic.save(image_dir / image_name, format="JPEG", quality=95, subsampling=0)
                 mosaic.close()
