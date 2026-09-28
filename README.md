@@ -4,7 +4,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[模型](models/pilot-multihead-v0.1) · [四图检测头](models/pilot-multi-photo-v0.1) · [训练指南](docs/TRAINING_GUIDE.md) · [实验记录](docs/EXPERIMENTS.md) · [项目页面源码](site/) · [MIT](LICENSE)
+[模型](models/pilot-multihead-v0.1) · [四图检测头](models/pilot-multi-photo-v0.1) · [训练指南](docs/TRAINING_GUIDE.md) · [实验记录](docs/EXPERIMENTS.md) · [项目页面](https://fffffiii.github.io/jev-policylite/) · [页面源码](site/) · [MIT](LICENSE)
 
 Jev-PolicyLite 是一个面向内容审核的轻量多模态决策项目。它基于 Qwen3.5-0.8B，联合读取图片、正文和审核规则，在一次前向中预测违规分数、视觉属性和处置动作。项目借鉴 Jev / NanoJev 的直接评分思路，提供多头训练、人工复核记录转换和策略头偏好优化工具。
 

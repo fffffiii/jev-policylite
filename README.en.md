@@ -4,7 +4,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[Model](models/pilot-multihead-v0.1) · [Four-photo heads](models/pilot-multi-photo-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page source](site/) · [MIT](LICENSE)
+[Model](models/pilot-multihead-v0.1) · [Four-photo heads](models/pilot-multi-photo-v0.1) · [Training](docs/TRAINING_GUIDE.md) · [Experiments](docs/EXPERIMENTS.md) · [Project page](https://fffffiii.github.io/jev-policylite/) · [Page source](site/) · [MIT](LICENSE)
 
 Jev-PolicyLite is a lightweight multimodal decision project for content moderation. Built on Qwen3.5-0.8B, it reads an image, accompanying text, and moderation rules together, then predicts a violation score, visual attributes, and a handling action in one forward pass. Inspired by Jev / NanoJev's direct-scoring approach, it provides multi-head training, review-feedback processing, and policy-head preference optimization.
 
